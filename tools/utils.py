@@ -1,6 +1,11 @@
 import numpy as np
 
 
+def max_indices(array):
+    """Return indices of maximum element in array."""
+    return np.unravel_index(np.argmax(array), array.shape)
+
+
 def get_bins(coords, axis=0, n_bins=10, pad=0.1, n_bins_mult=None):
     """Return bin centers along the specified axis.
     
