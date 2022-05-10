@@ -2,7 +2,8 @@ import numpy as np
 from scipy import ndimage
 from scipy import interpolate
 
-from . import utils
+from .utils import avoid_repeats
+from .utils import get_grid_coords
 
 
 def crop(image, l=None, r=None, b=None, t=None):
@@ -20,47 +21,51 @@ def thresh(image, thresh=None, val=0, mask=False):
     return im
 
 
-def get_image_3d(ys, images, gridy, ny, nx, smooth=True):
-    """Create 3D array from a set of screen images.
+def get_image_3d(images, points, grid, ny, nx, smooth=True):
+    """Interpolate to obtain a 3D array from a set of 2D images.
     
-    Each image corresponds to a different position of the y slit.
+    This should be extended to > 3 dimensions in the future.
     
-    ys : ndarray, shape (n,)
-        Y slit positions corresponding to each image.
-    images : ndarray, shape (n, ny * nx)
+    Parameters
+    ----------
+    images : ndarray, shape (m, ny * nx)
         Flattened camera images.
-    gridy : ndarray, shape
-        Grid values along the y axis.
+    points : ndarray, shape (m,)
+        Positions on the w axis (w could be whatever), one per image.
+    grid : ndarray, shape (g,)
+        Grid points on the w axis.
     ny{nx} : float
-        Number of rows{columns} in the images.
+        Number of rows{columns} in each images.
+        
+    Returns
+    -------
+    im3d : ndarray, shape (g, ny, nx)
     """
-    ypix = np.arange(ny)
-    xpix = np.arange(nx)
-    # Build up the 3D image (camera image for every data-point in one sweep).
-    n_frames = len(ys)
+    grid_im_y = np.arange(ny)
+    grid_im_x = np.arange(nx)
+    n_frames = len(points)
     im3d = np.zeros((n_frames, ny, nx))
     for i, im in enumerate(images):
         im3d[i, :, :] = im.reshape(ny, nx)
     # Sort by increasing y value (needed for interpolation)
-    idx_sort = np.argsort(ys)
-    ys = ys[idx_sort]
+    idx_sort = np.argsort(points)
+    points = points[idx_sort]
     im3d = im3d[idx_sort, :, :]
-    # Deal with any repeating points (otherwise interpolate won't work)
-    ys = utils.avoid_repeats(ys, pad=1e-7)
+    # Deal with any repeating points (otherwise interpolate won't work).
+    points = avoid_repeats(points, pad=1e-7)
     # Apply filter along 1st dimension.
-    im3d_smooth = im3d
     if smooth:
-        im3d_smooth = ndimage.median_filter(im3d, size=(3,1,1), mode='nearest')
+        im3d_smooth = ndimage.median_filter(im3d, size=(3, 1, 1), mode='nearest')
+    else:
+        im3d_smooth = im3d
     # Interpolate
-    Y, YP, X = np.meshgrid(gridy, ypix, xpix, indexing='ij')
-    new_points = np.vstack([Y.ravel(), YP.ravel(), X.ravel()]).T
-    a3d = interpolate.interpn(
-        (ys, ypix, xpix), 
+    new_points = get_grid_coords(grid, grid_im_y, grid_im_x)
+    im3d = interpolate.interpn(
+        (points, grid_im_y, grid_im_x), 
         im3d_smooth, 
         new_points, 
         method='linear', 
         bounds_error=False, 
         fill_value=0.0,
     )   
-    a3d = a3d.reshape(len(gridy), ny, nx)
-    return a3d
+    return im3d.reshape(len(grid), ny, nx)
