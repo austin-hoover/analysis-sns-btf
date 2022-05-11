@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import optimize as opt
 from matplotlib import pyplot as plt
 import proplot as pplt
 
@@ -50,20 +51,11 @@ def plot_compare_images(im1, im2, **plot_kws):
     return axes
 
 
-# labeller = lambda x: '{:.1f}'.format(np.log10(x))
-# contour_levels = tuple([10**i for i in (-4, -3, -2, -1)])
-# default_norm = colors.LogNorm(vmin=1e-4, vmax=1, clip=False)
-
-# def thisplot(array2plot,labels,norm=default_norm,ax1=None,ax2=None):
-#     try:
-#         plt.pcolor(ax1,ax2,array2plot)
-#     except:
-#         plt.pcolor(array2plot)
-#     plt.xlabel(labels[0]); plt.ylabel(labels[1])
-#     plt.colorbar()
-#     # -- contour
-#     try:
-#         CS = plt.contour(ax1,ax2,array2plot/array2plot.max(),levels=contour_levels,norm=norm,cmap='Set1')
-#     except:
-#         CS = plt.contour(array2plot/array2plot.max(),levels=contour_levels,norm=norm,cmap='Set1')
-#     plt.clabel(CS,fmt = labeller)
+def linear_fit(x, y):
+    def fit(x, slope, intercept):
+        return slope * x + intercept
+    
+    popt, pcov = opt.curve_fit(fit, x, y)
+    slope, intercept = popt
+    yfit = fit(x, *popt)
+    return yfit, slope, intercept
