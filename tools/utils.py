@@ -14,8 +14,11 @@ def avoid_repeats(a, pad=1e-7):
     return a
 
 
-# Numpy arrays
-# -----------------------------------------------------------------------------
+def apply(M, X):
+    """Apply M to each row of X."""
+    return np.apply_along_axis(lambda x: np.matmul(M, x), 1, X)
+
+
 def max_indices(array):
     """Return indices of maximum element in array."""
     return np.unravel_index(np.argmax(array), array.shape)
