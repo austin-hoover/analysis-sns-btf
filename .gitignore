@@ -3,3 +3,7 @@ __pycache__
 .ipynb_checkpoints
 /Diagnostics
 _output
+.mmp
+.npy
+.npz
+
