@@ -11,7 +11,7 @@ def plot_profiles(ax, image, log=False, scale=0.15, **plot_kws):
     for i, prof in enumerate(profs):
         prof = prof / np.sum(prof)
         if log:
-            prof = np.log10(1.0 + prof)
+            prof = np.log10(prof)
         prof = prof / np.max(prof)
         profs[i] = prof      
     xlim = ax.get_xlim()
@@ -21,7 +21,7 @@ def plot_profiles(ax, image, log=False, scale=0.15, **plot_kws):
     return ax
 
 
-def plot_image(image, ax=None, log=False, prof=True, prof_kws=None, **plot_kws):
+def plot_image(image, ax=None, log=False, prof=False, prof_kws=None, **plot_kws):
     """2D density plot with overlayed profiles."""
     if ax is None:
         fig, ax = pplt.subplots()
@@ -31,7 +31,10 @@ def plot_image(image, ax=None, log=False, prof=True, prof_kws=None, **plot_kws):
         prof_kws.setdefault('scale', 0.15)
     xx = np.arange(image.shape[1])
     yy = np.arange(image.shape[0])
-    norm = 'log' if log else None
+    norm = None
+    if log:
+        norm = 'log'
+        image = np.ma.masked_less_equal(image, 0)
     ax.pcolormesh(xx, yy, image, norm=norm, **plot_kws)
     if prof:
         plot_profiles(ax, image, log=log, **prof_kws)
