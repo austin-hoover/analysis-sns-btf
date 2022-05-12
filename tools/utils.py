@@ -52,7 +52,7 @@ def project(array, axis=0):
     if type(axis) is int:
         axis = [axis]
     sum_axis = tuple([k for k in range(array.ndim) if k not in axis])
-    return np.sum(array, axis=axis)
+    return np.sum(array, axis=sum_axis)
 
 
 def get_grid_coords(*xi, indexing='ij'):
