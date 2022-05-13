@@ -6,6 +6,21 @@ from .utils import avoid_repeats
 from .utils import get_grid_coords
 
 
+class CamSettings:
+    def __init__(self, name):
+        self.name = name
+        self.name_lowercase = name.lower()
+        self.ny = None
+        self.nx = None
+        if self.name_lowercase == 'cam34':
+            self.ny = 512
+            self.nx = 612
+            
+
+def camera_settings(cam):
+    return CamSettings(cam)
+
+
 def crop(image, l=None, r=None, b=None, t=None):
     return image[b:-t, l:-r]
 
