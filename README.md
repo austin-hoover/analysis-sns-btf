@@ -1,2 +1,2 @@
 # btf-data-analysis
-Analysis of Beam Test Facility (BTF) data
+Analysis of data from the Beam Test Facility (BTF).
