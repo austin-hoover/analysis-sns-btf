@@ -42,18 +42,6 @@ def plot_image(image, ax=None, log=False, prof=False, prof_kws=None, **plot_kws)
     return ax
 
 
-def plot_compare_images(im1, im2, **plot_kws):
-    """Plot images side by side, and a second row in log scale."""
-    fig, axes = pplt.subplots(ncols=2, nrows=2, figwidth=None, sharex=False, sharey=False)
-    for col, _im in enumerate([im1, im2]):
-        for row, log in enumerate([False, True]):
-            if log:
-                _im = np.log10(_im + 1e-6)
-            axes[row, col].pcolormesh(_im, **plot_kws)
-    axes.format(xticks=[], yticks=[], leftlabels=['Normal scale', 'log scale'])
-    return axes
-
-
 def linear_fit(x, y):
     def fit(x, slope, intercept):
         return slope * x + intercept

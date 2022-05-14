@@ -21,8 +21,8 @@ def camera_settings(cam):
     return CamSettings(cam)
 
 
-def crop(image, l=None, r=None, b=None, t=None):
-    return image[b:-t, l:-r]
+def crop(image, y1=None, y2=None, x1=None, x2=None):
+    return image[y1:y2, x1:x2]
 
 
 def thresh(image, thresh=None, val=0, mask=False):
