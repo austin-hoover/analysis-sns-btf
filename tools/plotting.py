@@ -1,46 +1,15 @@
+"""Utility plotting functions.
+
+Note: In this module, `image` is assumed to have ij indexing as opposed
+to xy indexing. So `image[0]` corresponds to the x-axis and `image[1]` 
+corresponds to the y axis. Thus, when `image` is passed to a plotting 
+routine, we call `ax.pcolormesh(image.T)`.
+"""
 import numpy as np
 from scipy import optimize as opt
 from matplotlib import pyplot as plt
 import proplot as pplt
 from . import utils
-
-
-def plot_profiles(ax, image, log=False, scale=0.15, **plot_kws):
-    plot_kws.setdefault('color', 'white')
-    xx = np.arange(image.shape[1])
-    yy = np.arange(image.shape[0])
-    profs = [np.sum(image, axis=i) for i in (0, 1)]
-    for i, prof in enumerate(profs):
-        prof = prof / np.sum(prof)
-        if log:
-            prof = np.log10(prof)
-        prof = prof / np.max(prof)
-        profs[i] = prof      
-    xlim = ax.get_xlim()
-    ylim = ax.get_ylim()
-    ax.plot(xx, image.shape[1] * scale * profs[0], **plot_kws)
-    ax.plot(image.shape[0] * scale * profs[1], yy, **plot_kws)
-    return ax
-
-
-def plot_image(image, ax=None, log=False, prof=False, prof_kws=None, **plot_kws):
-    """2D density plot with overlayed profiles."""
-    if ax is None:
-        fig, ax = pplt.subplots()
-    if prof_kws is None:
-        prof_kws = dict()
-        prof_kws.setdefault('color', 'white')
-        prof_kws.setdefault('scale', 0.15)
-    xx = np.arange(image.shape[1])
-    yy = np.arange(image.shape[0])
-    norm = None
-    if log:
-        norm = 'log'
-        image = np.ma.masked_less_equal(image, 0)
-    ax.pcolormesh(xx, yy, image, norm=norm, **plot_kws)
-    if prof:
-        plot_profiles(ax, image, log=log, **prof_kws)
-    return ax
 
 
 def linear_fit(x, y):
@@ -53,13 +22,57 @@ def linear_fit(x, y):
     return yfit, slope, intercept
 
 
+def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, **plot_kws):
+    """Plot image with profiles overlayed."""
+    if 'norm' in plot_kws and plot_kws['norm'] == 'log':
+        image += np.min(image[image > 0])
+        if 'colorbar' in plot_kws and plot_kws['colorbar']:
+            if 'colorbar_kw' not in plot_kws:
+                plot_kws['colorbar_kw'] = dict()
+            plot_kws['colorbar_kw']['formatter'] = 'log'
+    if x is None:
+        x = np.arange(image.shape[0])
+    if y is None:
+        y = np.arange(image.shape[1])
+    ax.pcolormesh(x, y, image.T, **plot_kws)
+    if prof:
+        if prof_kws is None:
+            prof_kws = dict()
+        prof_kws.setdefault('color', 'white')
+        prof_kws.setdefault('scale', 0.2)
+        prof_kws.setdefault('kind', 'line')
+        scale = prof_kws.pop('scale')
+        kind = prof_kws.pop('kind')
+        fx = np.sum(image, axis=1)
+        fy = np.sum(image, axis=0)
+        fx = fx / fx.max()
+        fy = fy / fy.max()
+        x1 = x
+        y1 = scale * image.shape[1] * fx / fx.max()
+        x2 = image.shape[0] * scale * fy
+        y2 = y
+        for i, (x, y) in enumerate(zip([x1, x2], [y1, y2])):
+            if kind == 'line':
+                ax.plot(x, y, **prof_kws)
+            elif kind == 'bar':
+                if i == 0:
+                    ax.bar(x, y, **prof_kws)
+                else:
+                    ax.barh(y, x, **prof_kws)
+            elif kind == 'step':
+                ax.step(x, y, **prof_kws)
+        # ax.plot(x, scale * image.shape[1] * fx / fx.max(), **prof_kws)
+        # ax.plot(image.shape[0] * scale * fy, y, **prof_kws)
+    return ax
+
+
 def corner(
     image, 
     labels=None, 
     diag_kind='line', 
-    log=False, 
     fig_kws=None, 
     diag_kws=None, 
+    prof=False,
     **plot_kws
 ):
     n = image.ndim
@@ -73,9 +86,7 @@ def corner(
         diag_kws = dict()
     diag_kws.setdefault('color', 'black')
     plot_kws.setdefault('ec', 'None')
-    if log:
-        plot_kws['norm'] = 'log'
-        
+    
     fig, axes = pplt.subplots(
         nrows=n, ncols=n, sharex=1, sharey=1, 
         spanx=False, spany=False, **fig_kws
@@ -95,9 +106,11 @@ def corner(
                     ax.step(h, **diag_kws)
             else:
                 H = utils.project(image, (j, i))
-                if log:
-                    H = np.ma.masked_less_equal(H, 0)
-                ax.pcolormesh(H.T, **plot_kws)
+                # if plot_kws['norm'] == 'log':
+                #     H += np.min(H[H > 0])
+                #     H = np.ma.masked_less_equal(H, 0)
+                # ax.pcolormesh(H.T, **plot_kws)
+                plot_image(H, ax=ax, prof=prof, **plot_kws)
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
     for ax, label in zip(axes[1:, 0], labels[1:]):
