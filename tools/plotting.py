@@ -60,9 +60,10 @@ def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, **plot
                 else:
                     ax.barh(y, x, **prof_kws)
             elif kind == 'step':
+                # Align steps with pcolormesh bins.
+                x -= 0.5 * (x[1] - x[0])
+                y -= 0.5 * (y[1] - y[0])
                 ax.step(x, y, **prof_kws)
-        # ax.plot(x, scale * image.shape[1] * fx / fx.max(), **prof_kws)
-        # ax.plot(image.shape[0] * scale * fy, y, **prof_kws)
     return ax
 
 
@@ -73,6 +74,7 @@ def corner(
     fig_kws=None, 
     diag_kws=None, 
     prof=False,
+    prof_kws=None,
     **plot_kws
 ):
     n = image.ndim
@@ -106,11 +108,7 @@ def corner(
                     ax.step(h, **diag_kws)
             else:
                 H = utils.project(image, (j, i))
-                # if plot_kws['norm'] == 'log':
-                #     H += np.min(H[H > 0])
-                #     H = np.ma.masked_less_equal(H, 0)
-                # ax.pcolormesh(H.T, **plot_kws)
-                plot_image(H, ax=ax, prof=prof, **plot_kws)
+                plot_image(H, ax=ax, prof=prof, prof_kws=prof_kws, **plot_kws)
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
     for ax, label in zip(axes[1:, 0], labels[1:]):
