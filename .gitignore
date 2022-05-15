@@ -6,4 +6,6 @@ _output
 *.mmp
 *.npy
 *.npz
+*.txt
+*.dat
 
