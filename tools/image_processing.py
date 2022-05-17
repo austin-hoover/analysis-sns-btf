@@ -36,32 +36,12 @@ def thresh(image, thresh=None, val=0, mask=False):
     return im
 
 
-def get_image_3d(images, points, grid, ny, nx, smooth=True):
-    """Interpolate to obtain a 3D array from a set of 2D images.
-    
-    This should be extended to > 3 dimensions in the future.
-    
-    Parameters
-    ----------
-    images : ndarray, shape (m, ny * nx)
-        Flattened camera images.
-    points : ndarray, shape (m,)
-        Positions on the w axis (w could be whatever), one per image.
-    grid : ndarray, shape (g,)
-        Grid points on the w axis.
-    ny{nx} : float
-        Number of rows{columns} in each images.
-        
-    Returns
-    -------
-    im3d : ndarray, shape (g, ny, nx)
-    """
+def interpolate_3d(im3d, points, grid, ny, nx, smooth=True):
+    if len(im3d) != len(points):
+        raise ValueError('Must have same number of images and points.')
+    n_frames, ny, nx = im3.shape
     grid_im_y = np.arange(ny)
     grid_im_x = np.arange(nx)
-    n_frames = len(points)
-    im3d = np.zeros((n_frames, ny, nx))
-    for i, im in enumerate(images):
-        im3d[i, :, :] = im.reshape(ny, nx)
     # Sort by increasing y value (needed for interpolation)
     idx_sort = np.argsort(points)
     points = points[idx_sort]
@@ -73,7 +53,7 @@ def get_image_3d(images, points, grid, ny, nx, smooth=True):
         im3d_smooth = ndimage.median_filter(im3d, size=(3, 1, 1), mode='nearest')
     else:
         im3d_smooth = im3d
-    # Interpolate
+    # Interpolate.
     new_points = get_grid_coords(grid, grid_im_y, grid_im_x)
     im3d = interpolate.interpn(
         (points, grid_im_y, grid_im_x), 

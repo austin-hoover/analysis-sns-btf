@@ -1,17 +1,15 @@
 import numpy as np
 
 
-def avoid_repeats(a, pad=1e-7):
-    """Function written by K. Ruisard to avoid repeating points in array.
+def avoid_repeats(array, pad=1e-7):
+    """Avoid repeating points in an array.
     
-    I'm nots sure why the counter is included.
+    Adds a small random number to each duplicate element.
     """
     repeat_idx, = np.where(np.diff(a) == 0)
-    counter = 1
     for i in reversed(repeat_idx):
-        a[i] -= pad * counter
-        counter += 1
-    return a
+        array[i] += np.random.uniform(-pad, pad)
+    return array
 
 
 def apply(M, X):
@@ -21,7 +19,7 @@ def apply(M, X):
 
 def max_indices(array):
     """Return indices of maximum element in array."""
-    return np.unravel_index(np.argmax(array), array.shape)
+    return np.unravel_index(np.argmax(array), array.shape)    
 
 
 def slice_array(array, axis=0, ind=0):
@@ -64,17 +62,14 @@ def get_grid_coords(*xi, indexing='ij'):
     return np.vstack([X.ravel() for X in np.meshgrid(*xi, indexing=indexing)]).T
 
 
-def get_bins(coords, axis=0, n_bins=10, pad=0.1, n_bins_mult=None):
-    """Return bin centers along the specified axis.
+def snap(array, n=165, pad=0.1):
+    """[Description here.]
     
     Parameters
     ----------
-    coords : ndarray, shape (n, d)
-        An array of n points in d-dimensional space.
-    dim : int
-        The dimension index.
+    array : ndarray, shape (n,)
     n_bins : int
-        The number of bins
+        The number of bins.
     n_bins_mult : int
         Multiplicative factor on n_bins. I need to figure out why this is
         necessary. Quote from K. Ruisard: "This parameter can be tuned
@@ -86,18 +81,11 @@ def get_bins(coords, axis=0, n_bins=10, pad=0.1, n_bins_mult=None):
         The grid values, i.e., bin centers.
     idx : ndarray, shape (?)
     """
-    # Bin the points.
-    bins = np.linspace(
-        np.min(coords[:, axis]) - pad,
-        np.max(coords[:, axis]) + pad,
-        1 + n_bins * n_bins_mult,
-    )
-    counts, bins = np.histogram(coords[:, axis], bins=bins)
-    # Assign a bin index to every point.
-    idx = np.digitize(coords[:, axis], bins, right=False)
+    bins = np.linspace(np.min(array) - pad, np.max(array) + pad, 1 + n)
+    counts, bins = np.histogram(array, bins=bins)
+    idx = np.digitize(array, bins, right=False)
     idx_unique = np.unique(idx)
     for i in range(len(idx_unique)):
         idx[idx == idx_unique[i]] = i
-    # Keep grid values (i.e. bin centers) of bins with nonzero counts.
     gv = bins[np.nonzero(counts)] + 0.5 * (bins[1] - bins[0])
     return gv, idx

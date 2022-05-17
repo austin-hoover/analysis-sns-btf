@@ -22,10 +22,10 @@ def linear_fit(x, y):
     return yfit, slope, intercept
 
 
-def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, **plot_kws):
+def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, frac_thresh=None, **plot_kws):
     """Plot image with profiles overlayed."""
-    if 'norm' in plot_kws and plot_kws['norm'] == 'log':
-        image += np.min(image[image > 0])
+    log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
+    if log:
         if 'colorbar' in plot_kws and plot_kws['colorbar']:
             if 'colorbar_kw' not in plot_kws:
                 plot_kws['colorbar_kw'] = dict()
@@ -34,11 +34,16 @@ def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, **plot
         x = np.arange(image.shape[0])
     if y is None:
         y = np.arange(image.shape[1])
+    if frac_thresh is not None:
+        image[image < frac_thresh * np.max(image)] = 0
+    if log:
+        image = image + np.min(image[image > 0])
     ax.pcolormesh(x, y, image.T, **plot_kws)
     if prof:
         if prof_kws is None:
             prof_kws = dict()
         prof_kws.setdefault('color', 'white')
+        prof_kws.setdefault('lw', 1.0)
         prof_kws.setdefault('scale', 0.2)
         prof_kws.setdefault('kind', 'line')
         scale = prof_kws.pop('scale')
@@ -60,17 +65,15 @@ def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, **plot
                 else:
                     ax.barh(y, x, **prof_kws)
             elif kind == 'step':
-                # Align steps with pcolormesh bins.
-                x -= 0.5 * (x[1] - x[0])
-                y -= 0.5 * (y[1] - y[0])
-                ax.step(x, y, **prof_kws)
+                ax.step(x, y, where='mid', **prof_kws)
     return ax
 
 
 def corner(
     image, 
     labels=None, 
-    diag_kind='line', 
+    diag_kind='line',
+    frac_thresh=None,
     fig_kws=None, 
     diag_kws=None, 
     prof=False,
@@ -105,10 +108,11 @@ def corner(
                 elif diag_kind == 'bar':
                     ax.bar(h, **diag_kws)
                 elif diag_kind == 'step':
-                    ax.step(h, **diag_kws)
+                    ax.step(h, where='mid', **diag_kws)
             else:
                 H = utils.project(image, (j, i))
-                plot_image(H, ax=ax, prof=prof, prof_kws=prof_kws, **plot_kws)
+                plot_image(H, ax=ax, prof=prof, prof_kws=prof_kws, 
+                           frac_thresh=frac_thresh, **plot_kws)
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
     for ax, label in zip(axes[1:, 0], labels[1:]):
