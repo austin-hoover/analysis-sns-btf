@@ -25,6 +25,17 @@ def max_indices(array):
     return np.unravel_index(np.argmax(array), array.shape)    
 
 
+def make_slice(n, axis=0, ind=0):
+    idx = n * [slice(None)]
+    if type(axis) is int:
+        axis = [axis]
+    if type(ind) is int:
+        ind = [ind]
+    for i, k in zip(ind, axis):
+        idx[k] = i
+    return tuple(idx)
+
+
 def slice_array(array, axis=0, ind=0):
     """Slice array along one or more axes.
     
@@ -35,14 +46,7 @@ def slice_array(array, axis=0, ind=0):
     ind : int or list
         Locations on the specified axis(axes).
     """
-    idx = array.ndim * [slice(None)]
-    if type(axis) is int:
-        axis = [axis]
-    if type(ind) is int:
-        ind = [ind]
-    for i, k in zip(ind, axis):
-        idx[k] = i
-    return array[tuple(idx)]
+    return array[make_slice(array.ndim, axis, ind)]
 
 
 def project(array, axis=0):
