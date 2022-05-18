@@ -22,7 +22,8 @@ def linear_fit(x, y):
     return yfit, slope, intercept
 
 
-def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, frac_thresh=None, **plot_kws):
+def plot_image(image, ax=None, x=None, y=None, profx=False, profy=False, 
+               prof_kws=None, frac_thresh=None, **plot_kws):
     """Plot image with profiles overlayed."""
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
     if log:
@@ -39,7 +40,7 @@ def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, frac_t
     if log:
         image = image + np.min(image[image > 0])
     ax.pcolormesh(x, y, image.T, **plot_kws)
-    if prof:
+    if profx or profy:
         if prof_kws is None:
             prof_kws = dict()
         prof_kws.setdefault('color', 'white')
@@ -57,6 +58,10 @@ def plot_image(image, ax=None, x=None, y=None, prof=False, prof_kws=None, frac_t
         x2 = image.shape[0] * scale * fy
         y2 = y
         for i, (x, y) in enumerate(zip([x1, x2], [y1, y2])):
+            if i == 0 and not profx:
+                continue
+            if i == 1 and not profy:
+                continue
             if kind == 'line':
                 ax.plot(x, y, **prof_kws)
             elif kind == 'bar':
@@ -92,6 +97,18 @@ def corner(
     diag_kws.setdefault('color', 'black')
     plot_kws.setdefault('ec', 'None')
     
+    if diag_kind is None or diag_kind.lower() == 'none':
+        axes = _corner_nodiag(
+            image, 
+            labels=labels, 
+            frac_thresh=frac_thresh,
+            fig_kws=fig_kws, 
+            prof=prof,
+            prof_kws=prof_kws,
+            **plot_kws
+        )
+        return axes
+    
     fig, axes = pplt.subplots(
         nrows=n, ncols=n, sharex=1, sharey=1, 
         spanx=False, spany=False, **fig_kws
@@ -110,8 +127,13 @@ def corner(
                 elif diag_kind == 'step':
                     ax.step(h, where='mid', **diag_kws)
             else:
+                if prof == 'edges':
+                    profx = i == n - 1
+                    profy = j == 0
+                else:
+                    profx = profy = prof
                 H = utils.project(image, (j, i))
-                plot_image(H, ax=ax, prof=prof, prof_kws=prof_kws, 
+                plot_image(H, ax=ax, profx=profx, profy=profy, prof_kws=prof_kws, 
                            frac_thresh=frac_thresh, **plot_kws)
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
@@ -121,4 +143,47 @@ def corner(
         axes[:-1, i].format(xticklabels=[])
         if i > 0:
             axes[i, 1:].format(yticklabels=[])
+    return axes
+
+
+def _corner_nodiag(
+    image, 
+    labels=None, 
+    frac_thresh=None,
+    fig_kws=None, 
+    prof=False,
+    prof_kws=None,
+    **plot_kws
+):
+    n = image.ndim
+    if labels is None:
+        labels = n * ['']
+    if fig_kws is None:
+        fig_kws = dict()
+    fig_kws.setdefault('figwidth', 1.5 * (n - 1))
+    fig_kws.setdefault('aligny', True)
+    plot_kws.setdefault('ec', 'None')
+    
+    fig, axes = pplt.subplots(
+        nrows=n-1, ncols=n-1, 
+        spanx=False, spany=False, **fig_kws
+    )
+    for i in range(n - 1):
+        for j in range(n - 1):
+            ax = axes[i, j]
+            if j > i:
+                ax.axis('off')
+                continue
+            if prof == 'edges':
+                profy = j == 0
+                profx = i == n - 2
+            else:
+                profx = profy = prof
+            H = utils.project(image, (j, i + 1))
+            plot_image(H, ax=ax, profx=profx, profy=profy, prof_kws=prof_kws, 
+                       frac_thresh=frac_thresh, **plot_kws)
+    for ax, label in zip(axes[-1, :], labels):
+        ax.format(xlabel=label)
+    for ax, label in zip(axes[:, 0], labels[1:]):
+        ax.format(ylabel=label)
     return axes

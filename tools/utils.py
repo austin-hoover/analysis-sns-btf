@@ -4,12 +4,15 @@ import numpy as np
 def avoid_repeats(array, pad=1e-7):
     """Avoid repeating points in an array.
     
-    Adds a small random number to each duplicate element.
+    Adds a small number to each duplicate element.
     """
-    repeat_idx, = np.where(np.diff(a) == 0)
+    repeat_idx, = np.where(np.diff(array) == 0)
+    counter = 1
     for i in reversed(repeat_idx):
-        array[i] += np.random.uniform(-pad, pad)
+        array[i] -= pad * counter
+        counter += 1
     return array
+
 
 
 def apply(M, X):
