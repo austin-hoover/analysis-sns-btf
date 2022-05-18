@@ -25,6 +25,22 @@ def max_indices(array):
     return np.unravel_index(np.argmax(array), array.shape)    
 
 
+def flatten_array_index(ind, shape):
+    """Return index in flattend array from multi-dimensional index.
+    
+    Example
+    -------
+    >>> x = np.array([[1.0, 1.5, 3.0], [-1.4, 3.6, 2.1]])
+    >>> ind = (1, 2)
+    >>> i = flatten_array_index(ind, x.shape)
+    >>> print(i, x.ravel()[i], x[ind])
+    5 2.1 2.1
+    """
+    multi_index = tuple([[i,] for i in ind])
+    i, = np.ravel_multi_index(multi_index, shape)
+    return i
+
+
 def make_slice(n, axis=0, ind=0):
     idx = n * [slice(None)]
     if type(axis) is int:
