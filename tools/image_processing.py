@@ -35,7 +35,7 @@ def thresh(image, thresh=None, val=0, mask=False):
     return im
 
 
-def interp_along_axis(image, x, xnew, axis=0):
+def interp_along_axis(image, x, xnew, axis=0, **kws):
     """Interpolate N-dimensional image along along one axis.
     
     It just calls `scipy.interpolate.interp1d`. Before doing so, `x` and
@@ -54,10 +54,14 @@ def interp_along_axis(image, x, xnew, axis=0):
         the interpolation axis.
     axis : int
         The axis of `image` along which to interpolate.
+    **kws
+        Key word arguments to be passes to `scipy.interpolate.interp1d`.
     """
+    kws.setdefault('bounds_error', False)
+    kws.setdefault('fill_value', 0.0)
     idx_sort = np.argsort(x)
     x = x[idx_sort]
     image = image[idx_sort, :, :]
     x = utils.avoid_repeats(x)
-    f = interpolate.interp1d(x, image, axis=0, bounds_error=False, fill_value=0.0)
+    f = interpolate.interp1d(x, image, axis=0, **kws)
     return f(xnew)
