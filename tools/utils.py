@@ -25,7 +25,7 @@ def max_indices(array):
     return np.unravel_index(np.argmax(array), array.shape)    
 
 
-def flatten_array_index(ind, shape):
+def flatten_index(ind, shape):
     """Return index in flattend array from multi-dimensional index.
     
     Example
@@ -41,11 +41,32 @@ def flatten_array_index(ind, shape):
     return i
 
 
+def copy_into_new_dim(array, shape, axis=-1, method='broadcast'):
+    """Copy an array into one or more new dimensions.
+    
+    The 'broadcast' method is much faster. See 'https://stackoverflow.com/questions/32171917/how-to-copy-a-2d-array-into-a-3rd-dimension-n-times'
+    """
+    if type(shape) is int:
+        shape = (shape,)
+    if method == 'repeat':
+        for i in range(len(shape)):
+            array = np.repeat(np.expand_dims(array, axis), shape[i], axis=axis)
+    elif method == 'broadcast':
+        if axis == 0:
+            new_shape = shape + array.shape
+        elif axis == -1:
+            new_shape = array.shape + shape
+        for _ in range(len(shape)):
+            array = np.expand_dims(array, axis)
+        array = np.broadcast_to(array, new_shape)
+    return array
+
+
 def make_slice(n, axis=0, ind=0):
     idx = n * [slice(None)]
     if type(axis) is int:
         axis = [axis]
-    if type(ind) is int:
+    if type(ind) is int or ind is None or ind is np.newaxis:
         ind = [ind]
     for i, k in zip(ind, axis):
         idx[k] = i
