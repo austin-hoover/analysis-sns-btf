@@ -22,7 +22,7 @@ def linear_fit(x, y):
     return yfit, slope, intercept
 
 
-def plot_image(image, ax=None, x=None, y=None, profx=False, profy=False, 
+def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False, 
                prof_kws=None, frac_thresh=None, **plot_kws):
     """Plot image with profiles overlayed."""
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
@@ -35,6 +35,10 @@ def plot_image(image, ax=None, x=None, y=None, profx=False, profy=False,
         x = np.arange(image.shape[0])
     if y is None:
         y = np.arange(image.shape[1])
+    if x.ndim == 2:
+        x = x.T
+    if y.ndim == 2:
+        y = y.T
     if frac_thresh is not None:
         image[image < frac_thresh * np.max(image)] = 0
     if log:
@@ -76,6 +80,7 @@ def plot_image(image, ax=None, x=None, y=None, profx=False, profy=False,
 
 def corner(
     image, 
+    coords=None,
     labels=None, 
     diag_kind='line',
     frac_thresh=None,
@@ -97,9 +102,13 @@ def corner(
     diag_kws.setdefault('color', 'black')
     plot_kws.setdefault('ec', 'None')
     
+    if coords is None:
+        coords = [np.arange(s) for s in image.shape]
+    
     if diag_kind is None or diag_kind.lower() == 'none':
         axes = _corner_nodiag(
             image, 
+            coords=coords,
             labels=labels, 
             frac_thresh=frac_thresh,
             fig_kws=fig_kws, 
@@ -133,7 +142,8 @@ def corner(
                 else:
                     profx = profy = prof
                 H = utils.project(image, (j, i))
-                plot_image(H, ax=ax, profx=profx, profy=profy, prof_kws=prof_kws, 
+                plot_image(H, ax=ax, x=coords[j], y=coords[i],
+                           profx=profx, profy=profy, prof_kws=prof_kws, 
                            frac_thresh=frac_thresh, **plot_kws)
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
@@ -148,6 +158,7 @@ def corner(
 
 def _corner_nodiag(
     image, 
+    coords=None,
     labels=None, 
     frac_thresh=None,
     fig_kws=None, 
@@ -180,7 +191,18 @@ def _corner_nodiag(
             else:
                 profx = profy = prof
             H = utils.project(image, (j, i + 1))
-            plot_image(H, ax=ax, profx=profx, profy=profy, prof_kws=prof_kws, 
+            
+            x = coords[j]
+            y = coords[i + 1]
+            if x.ndim > 1:
+                axis = [k for k in range(x.ndim) if k not in (j, i + 1)]
+                ind = len(axis) * [0]
+                idx = utils.make_slice(x.ndim, axis, ind)
+                x = x[idx]
+                y = y[idx]
+                
+            plot_image(H, ax=ax, x=x, y=y,
+                       profx=profx, profy=profy, prof_kws=prof_kws, 
                        frac_thresh=frac_thresh, **plot_kws)
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
