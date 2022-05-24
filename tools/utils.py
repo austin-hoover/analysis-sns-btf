@@ -14,7 +14,6 @@ def avoid_repeats(array, pad=1e-7):
     return array
 
 
-
 def apply(M, X):
     """Apply M to each row of X."""
     return np.apply_along_axis(lambda x: np.matmul(M, x), 1, X)
@@ -41,16 +40,18 @@ def flatten_index(ind, shape):
     return i
 
 
-def copy_into_new_dim(array, shape, axis=-1, method='broadcast'):
+def copy_into_new_dim(array, shape, axis=-1, method='broadcast', copy=False):
     """Copy an array into one or more new dimensions.
     
-    The 'broadcast' method is much faster. See 'https://stackoverflow.com/questions/32171917/how-to-copy-a-2d-array-into-a-3rd-dimension-n-times'
+    The 'broadcast' method is much faster since it works with views instead of copies. 
+    See 'https://stackoverflow.com/questions/32171917/how-to-copy-a-2d-array-into-a-3rd-dimension-n-times'
     """
     if type(shape) is int:
         shape = (shape,)
     if method == 'repeat':
         for i in range(len(shape)):
             array = np.repeat(np.expand_dims(array, axis), shape[i], axis=axis)
+        return array
     elif method == 'broadcast':
         if axis == 0:
             new_shape = shape + array.shape
@@ -58,8 +59,11 @@ def copy_into_new_dim(array, shape, axis=-1, method='broadcast'):
             new_shape = array.shape + shape
         for _ in range(len(shape)):
             array = np.expand_dims(array, axis)
-        array = np.broadcast_to(array, new_shape)
-    return array
+        if copy:
+            return np.broadcast_to(array, new_shape).copy()
+        else:
+            return np.broadcast_to(array, new_shape)
+    return None
 
 
 def make_slice(n, axis=0, ind=0):
@@ -96,8 +100,13 @@ def project(array, axis=0):
     """
     if type(axis) is int:
         axis = [axis]
-    sum_axis = tuple([k for k in range(array.ndim) if k not in axis])
-    return np.sum(array, axis=sum_axis)
+    axis_sum = tuple([i for i in range(array.ndim) if i not in axis])
+    proj = np.sum(array, axis=axis_sum)
+    # Handle out of order projection. Right now it just handles 2D, but
+    # it should be extended to any number of dimension.
+    if proj.ndim == 2 and axis[0] > axis[1]:
+        proj = np.moveaxis(proj, 0, 1)
+    return proj
 
 
 def get_grid_coords(*xi, indexing='ij'):
