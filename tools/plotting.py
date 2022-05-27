@@ -23,7 +23,9 @@ def linear_fit(x, y):
 
 
 def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False, 
-               prof_kws=None, frac_thresh=None, **plot_kws):
+               prof_kws=None, frac_thresh=None, contour=False, contour_kws=None,
+               return_mesh=False,
+               **plot_kws):
     """Plot image with profiles overlayed."""
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
     if log:
@@ -31,6 +33,11 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
             if 'colorbar_kw' not in plot_kws:
                 plot_kws['colorbar_kw'] = dict()
             plot_kws['colorbar_kw']['formatter'] = 'log'
+    if contour and contour_kws is None:
+        contour_kws = dict()
+        contour_kws.setdefault('color', 'white')
+        contour_kws.setdefault('lw', 1.0)
+        contour_kws.setdefault('alpha', 0.5)
     if x is None:
         x = np.arange(image.shape[0])
     if y is None:
@@ -43,7 +50,9 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
         image[image < frac_thresh * np.max(image)] = 0
     if log:
         image = image + np.min(image[image > 0])
-    ax.pcolormesh(x, y, image.T, **plot_kws)
+    mesh = ax.pcolormesh(x, y, image.T, **plot_kws)
+    if contour:
+        ax.contour(x, y, image.T, **contour_kws)
     if profx or profy:
         if prof_kws is None:
             prof_kws = dict()
@@ -58,8 +67,10 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
         fx = fx / fx.max()
         fy = fy / fy.max()
         x1 = x
-        y1 = scale * image.shape[1] * fx / fx.max()
-        x2 = image.shape[0] * scale * fy
+        y1 = scale * np.abs(y[-1] - y[0]) * fx / fx.max()
+        x2 = np.abs(x[-1] - x[0]) * scale * fy / fy.max()
+        y1 = y1 + y[0]
+        x2 = x2 + x[0]
         y2 = y
         for i, (x, y) in enumerate(zip([x1, x2], [y1, y2])):
             if i == 0 and not profx:
@@ -75,7 +86,10 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
                     ax.barh(y, x, **prof_kws)
             elif kind == 'step':
                 ax.step(x, y, where='mid', **prof_kws)
-    return ax
+    if return_mesh:
+        return ax, mesh
+    else:
+        return ax
 
 
 def corner(
@@ -90,6 +104,11 @@ def corner(
     prof_kws=None,
     **plot_kws
 ):
+    """
+    
+    Need to fix prof='edges' option... we don't want it to make it look like we are
+    plotting the 
+    """
     n = image.ndim
     if labels is None:
         labels = n * ['']
