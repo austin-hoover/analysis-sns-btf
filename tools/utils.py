@@ -46,7 +46,7 @@ def copy_into_new_dim(array, shape, axis=-1, method='broadcast', copy=False):
     The 'broadcast' method is much faster since it works with views instead of copies. 
     See 'https://stackoverflow.com/questions/32171917/how-to-copy-a-2d-array-into-a-3rd-dimension-n-times'
     """
-    if type(shape) is int:
+    if type(shape) in [int, np.int32, np.int64]:
         shape = (shape,)
     if method == 'repeat':
         for i in range(len(shape)):
@@ -67,43 +67,27 @@ def copy_into_new_dim(array, shape, axis=-1, method='broadcast', copy=False):
 
 
 def make_slice(n, axis=0, ind=0):
-    idx = n * [slice(None)]
+    """Return a slice index."""
     if type(axis) is int:
         axis = [axis]
-    if type(ind) is int or ind is None or ind is np.newaxis:
+    if type(ind) is int:
         ind = [ind]
-    for i, k in zip(ind, axis):
-        idx[k] = i
+    idx = n * [slice(None)]
+    for k, i in zip(axis, ind):
+        if i is None:
+            continue
+        idx[k] = slice(i[0], i[1]) if type(i) in [tuple, list, np.ndarray] else i
     return tuple(idx)
 
 
-def slice_array(array, axis=0, ind=0):
-    """Slice array along one or more axes.
-    
-    array : ndarray
-        The array to slice.
-    axis : int or list
-        The axis(axes) along which to slice.
-    ind : int or list
-        Locations on the specified axis(axes).
-    """
-    return array[make_slice(array.ndim, axis, ind)]
-
-
 def project(array, axis=0):
-    """Project array onto one or more axes.
-    
-    array : ndarray
-        The distribution.
-    axis : int or list
-        Axis(axes) along which to project the array.
-    """
+    """Project array onto one or more axes."""
     if type(axis) is int:
         axis = [axis]
     axis_sum = tuple([i for i in range(array.ndim) if i not in axis])
     proj = np.sum(array, axis=axis_sum)
     # Handle out of order projection. Right now it just handles 2D, but
-    # it should be extended to any number of dimension.
+    # it should be extended to higher dimensions.
     if proj.ndim == 2 and axis[0] > axis[1]:
         proj = np.moveaxis(proj, 0, 1)
     return proj
@@ -142,3 +126,31 @@ def snap(array, n=165, pad=0.1):
         idx[idx == idx_unique[i]] = i
     gv = bins[np.nonzero(counts)] + 0.5 * (bins[1] - bins[0])
     return gv, idx
+
+
+# The following three functions are from Tony Yu's blog (https://tonysyu.github.io/ragged-arrays.html#.YKVwQy9h3OR). They allow fast saving/loading of ragged arrays.
+def stack_ragged(array_list, axis=0):
+    """Stacks list of arrays along first axis.
+    
+    Example: (25, 4) + (75, 4) -> (100, 4). It also returns the indices at
+    which to split the stacked array to regain the original list of arrays.
+    """
+    lengths = [np.shape(array)[axis] for array in array_list]
+    idx = np.cumsum(lengths[:-1])
+    stacked = np.concatenate(array_list, axis=axis)
+    return stacked, idx
+    
+
+def save_stacked_array(filename, array_list, axis=0):
+    """Save list of ragged arrays as single stacked array. The index from
+    `stack_ragged` is also saved."""
+    stacked, idx = stack_ragged(array_list, axis=axis)
+    np.savez(filename, stacked_array=stacked, stacked_index=idx)
+    
+    
+def load_stacked_arrays(filename, axis=0):
+    """"Load stacked ragged array from .npz file as list of arrays."""
+    npz_file = np.load(filename)
+    idx = npz_file['stacked_index']
+    stacked = npz_file['stacked_array']
+    return np.split(stacked, idx, axis=axis)
