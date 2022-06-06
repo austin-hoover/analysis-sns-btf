@@ -26,7 +26,10 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
                prof_kws=None, frac_thresh=None, contour=False, contour_kws=None,
                return_mesh=False,
                **plot_kws):
-    """Plot image with profiles overlayed."""
+    """Plot image with profiles overlayed.
+    
+    To do: clean up, add documentation.
+    """
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
     if log:
         if 'colorbar' in plot_kws and plot_kws['colorbar']:
@@ -46,10 +49,15 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
         x = x.T
     if y.ndim == 2:
         y = y.T
+    image_max = np.max(image)
     if frac_thresh is not None:
-        image[image < frac_thresh * np.max(image)] = 0
+        floor = max(1e-12, frac_thresh * image_max)
+        image[image < floor] = 0
     if log:
-        image = image + np.min(image[image > 0])
+        floor = 1e-12
+        if image_max > 0:
+            floor = np.min(image[image > 0])
+        image = image + floor
     mesh = ax.pcolormesh(x, y, image.T, **plot_kws)
     if contour:
         ax.contour(x, y, image.T, **contour_kws)
@@ -64,11 +72,15 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
         kind = prof_kws.pop('kind')
         fx = np.sum(image, axis=1)
         fy = np.sum(image, axis=0)
-        fx = fx / fx.max()
-        fy = fy / fy.max()
+        fx_max = np.max(fx)
+        fy_max = np.max(fy)
+        if fx_max > 0:
+            fx = fx / fx_max
+        if fy_max > 0:
+            fy = fy / fy.max()
         x1 = x
-        y1 = scale * np.abs(y[-1] - y[0]) * fx / fx.max()
-        x2 = np.abs(x[-1] - x[0]) * scale * fy / fy.max()
+        y1 = scale * np.abs(y[-1] - y[0]) * fx
+        x2 = np.abs(x[-1] - x[0]) * scale * fy
         y1 = y1 + y[0]
         x2 = x2 + x[0]
         y2 = y
@@ -102,12 +114,17 @@ def corner(
     diag_kws=None, 
     prof=False,
     prof_kws=None,
+    return_fig=False,
     **plot_kws
 ):
-    """
+    """Plot all 1D/2D projections in a matrix of subplots.
     
-    Need to fix prof='edges' option... we don't want it to make it look like we are
-    plotting the 
+    To do: 
+    
+    Clean this up and merge with `scdist.tools.plotting.corner`, 
+    which performs binning first. I believe in scdist I also found
+    a nicer way to handle diag on/off. (One function that plots
+    the off-diagonals, recieving axes as an argument.
     """
     n = image.ndim
     if labels is None:
@@ -133,6 +150,7 @@ def corner(
             fig_kws=fig_kws, 
             prof=prof,
             prof_kws=prof_kws,
+            return_fig=return_fig,
             **plot_kws
         )
         return axes
@@ -172,6 +190,8 @@ def corner(
         axes[:-1, i].format(xticklabels=[])
         if i > 0:
             axes[i, 1:].format(yticklabels=[])
+    if return_fig:
+        return fig, axes
     return axes
 
 
@@ -183,6 +203,7 @@ def _corner_nodiag(
     fig_kws=None, 
     prof=False,
     prof_kws=None,
+    return_fig=False,
     **plot_kws
 ):
     n = image.ndim
@@ -227,4 +248,6 @@ def _corner_nodiag(
         ax.format(xlabel=label)
     for ax, label in zip(axes[:, 0], labels[1:]):
         ax.format(ylabel=label)
+    if return_fig:
+        return fig, axes
     return axes
