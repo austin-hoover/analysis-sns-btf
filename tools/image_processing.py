@@ -9,11 +9,15 @@ class CamSettings:
     def __init__(self, name):
         self.name = name
         self.name_lowercase = name.lower()
-        self.ny = None
-        self.nx = None
-        if self.name_lowercase == 'cam34':
-            self.ny = 512
-            self.nx = 612
+        self.shape = None
+        self.pix2mm = None
+        if self.name_lowercase == 'cam06':
+            self.shape = (258, 346)
+            self.pix2mm = 0.0659  # at 1X zoom?
+        elif self.name_lowercase == 'cam34':
+            self.shape = (512, 612)
+            self.pix2mm = 0.05  # at 1X zoom
+        self.ny, self.nx = self.shape
             
 
 def camera_settings(cam):
