@@ -303,7 +303,9 @@ def interactive_proj2d(
         dims = n * ['']
     if units is None:
         units = n * ['']
-    dims_units = [f'{d} [{u}]' for d, u in zip(dims, units)]
+    dims_units = []
+    for dim, unit in zip(dims, units):
+        dims_units.append(f'{dim}' + f' [{unit}]' if unit != '' else '')
     dim_to_int = {dim: i for i, dim in enumerate(dims)}
     if prof_kws is None:
         prof_kws = dict()
