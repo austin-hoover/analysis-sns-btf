@@ -9,6 +9,9 @@ import numpy as np
 from scipy import optimize as opt
 from matplotlib import pyplot as plt
 import proplot as pplt
+from ipywidgets import interactive
+from ipywidgets import widgets
+
 from . import utils
 
 
@@ -66,7 +69,7 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
             prof_kws = dict()
         prof_kws.setdefault('color', 'white')
         prof_kws.setdefault('lw', 1.0)
-        prof_kws.setdefault('scale', 0.2)
+        prof_kws.setdefault('scale', 0.15)
         prof_kws.setdefault('kind', 'line')
         scale = prof_kws.pop('scale')
         kind = prof_kws.pop('kind')
@@ -251,3 +254,162 @@ def _corner_nodiag(
     if return_fig:
         return fig, axes
     return axes
+
+
+def interactive_proj2d(
+    f, 
+    coords=None,
+    default_ind=(2, 3),
+    slider_type='int',  # {'int', 'range'}
+    dims=None,
+    units=None,
+    prof_kws=None,
+    cmaps=None,
+    **plot_kws,
+):
+    """Interactive plot of 2D projection of distribution `f`.
+    
+    The distribution is projected onto the specified axes. Sliders provide the
+    option to slice the distribution before projecting.
+    
+    Parameters
+    ----------
+    f : ndarray
+        An n-dimensional array.
+    coords : list[ndarray]
+        Coordinate arrays along each dimension. A square grid is assumed.
+    default_ind : (i, j)
+        Default x and y index to plot.
+    slider_type : {'int', 'range'}
+        Whether to slice one index along the axis or a range of indices.
+    dims : list[str], shape (n,)
+        Dimension names.
+    units : list[str], shape (n,)
+        Dimension units.
+    prof_kws : dict
+        Key word arguments for 1D profile plots.
+    cmaps : dict
+    
+    Returns
+    -------
+    gui : ipywidgets.widgets.interaction.interactive
+        This widget can be displayed by calling `IPython.display.display(gui)`. 
+    """
+    n = f.ndim
+    if coords is None:
+        coords = [np.arange(f.shape[k]) for k in range(n)]
+    
+    if dims is None:
+        dims = n * ['']
+    if units is None:
+        units = n * ['']
+    dims_units = [f'{d} [{u}]' for d, u in zip(dims, units)]
+    dim_to_int = {dim: i for i, dim in enumerate(dims)}
+    if prof_kws is None:
+        prof_kws = dict()
+    prof_kws.setdefault('lw', 1.0)
+    prof_kws.setdefault('alpha', 0.5)
+    prof_kws.setdefault('color', 'white')
+    prof_kws.setdefault('scale', 0.14)
+    if cmaps is None:
+        cmaps = ['viridis', 'dusk_r', 'mono_r', 'plasma']
+    plot_kws.setdefault('colorbar', True)
+    plot_kws['prof_kws'] = prof_kws
+    
+    # Widgets
+    cmap = widgets.Dropdown(options=cmaps, description='cmap')
+    thresh = widgets.FloatSlider(value=-5.0, min=-8.0, max=0.0, step=0.1, 
+                                 description='thresh', continuous_update=True)
+    discrete = widgets.Checkbox(value=False, description='discrete')
+    log = widgets.Checkbox(value=False, description='log')
+    contour = widgets.Checkbox(value=False, description='contour')
+    profiles = widgets.Checkbox(value=True, description='profiles')
+    scale = widgets.FloatSlider(value=0.15, min=0.0, max=1.0, step=0.01, description='scale')
+    dim1 = widgets.Dropdown(options=dims, index=default_ind[0], description='dim 1')
+    dim2 = widgets.Dropdown(options=dims, index=default_ind[1], description='dim 2')
+    
+    # Sliders
+    sliders, checks = [], []
+    for k in range(5):
+        if slider_type == 'int':
+            slider = widgets.IntSlider(
+                min=0, max=f.shape[k], value=f.shape[k]//2,
+                description=dims[k], 
+                continuous_update=True,
+            )
+        elif slider_type == 'range':
+            slider = widgets.IntRangeSlider(
+                value=(0, f.shape[k]), min=0, max=f.shape[k],
+                description=dims[k], 
+                continuous_update=True,
+            )
+        else:
+            raise ValueError('Invalid `slider_type`.')
+        slider.layout.display = 'none'
+        sliders.append(slider)
+        checks.append(widgets.Checkbox(description=f'slice {dims[k]}'))
+        
+    # Hide/show sliders.
+    def hide(button):
+        for k in range(n):
+            # Hide elements for dimensions being plotted.
+            valid = dims[k] not in (dim1.value, dim2.value)
+            disp = None if valid else 'none'
+            for element in [sliders[k], checks[k]]:
+                element.layout.display = disp
+            # Uncheck boxes for dimensions being plotted. 
+            if not valid and checks[k].value:
+                checks[k].value = False
+            # Make sliders respond to check boxes.
+            if not checks[k].value:
+                sliders[k].layout.display = 'none'
+                    
+    for element in (dim1, dim2, *checks):
+        element.observe(hide, names='value')
+    # Initial hide
+    for k in range(n):
+        if k in default_ind:
+            checks[k].layout.display = 'none'
+            sliders[k].layout.display = 'none'
+            
+    def update(dim1, dim2, check_x, check_xp, check_y, check_yp, check_w, 
+               x, xp, y, yp, w, log, profiles, thresh, cmap):
+        """Generate the figure."""
+        if (dim1 == dim2):
+            return
+        checks = [check_x, check_xp, check_y, check_yp, check_w]
+        for dim, check in zip(dims, checks):
+            if check and dim in (dim1, dim2):
+                return
+        axis_view = [dim_to_int[dim] for dim in (dim1, dim2)]
+        axis_slice = [dim_to_int[dim] for dim, check in zip(dims, checks) if check]
+        ind = [x, xp, y, yp, w]
+        for k in range(n):
+            if type(ind[k]) is int:
+                ind[k] = (ind[k], ind[k] + 1)
+        ind = [ind[k] for k in axis_slice]
+        H = f[utils.make_slice(f.ndim, axis_slice, ind)]
+        H = utils.project(H, axis_view)
+        H_max = np.max(H)
+        if H_max > 0:
+            H = H / H_max
+        plot_kws.update({
+            'profx': profiles,
+            'profy': profiles,
+            'cmap': cmap,
+            'frac_thresh': 10.0**thresh,
+            'norm': 'log' if log else None,
+        })
+        fig, ax = pplt.subplots()
+        plot_image(H, x=coords[axis_view[0]], y=coords[axis_view[1]], ax=ax, **plot_kws)
+        ax.format(xlabel=dims_units[axis_view[0]], ylabel=dims_units[axis_view[1]])
+        plt.show()
+        
+    gui = interactive(
+        update, 
+        dim1=dim1, dim2=dim2, 
+        check_x=checks[0], check_xp=checks[1], check_y=checks[2], check_yp=checks[3], check_w=checks[4],
+        x=sliders[0], xp=sliders[1], y=sliders[2], yp=sliders[3], w=sliders[4],
+        log=log, profiles=profiles, thresh=thresh, cmap=cmap,
+    )
+    return gui
