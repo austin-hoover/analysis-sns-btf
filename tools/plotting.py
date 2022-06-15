@@ -259,7 +259,7 @@ def _corner_nodiag(
 def interactive_proj2d(
     f, 
     coords=None,
-    default_ind=(2, 3),
+    default_ind=(0, 1),
     slider_type='int',  # {'int', 'range'}
     dims=None,
     units=None,
@@ -326,13 +326,17 @@ def interactive_proj2d(
     log = widgets.Checkbox(value=False, description='log')
     contour = widgets.Checkbox(value=False, description='contour')
     profiles = widgets.Checkbox(value=True, description='profiles')
-    scale = widgets.FloatSlider(value=0.15, min=0.0, max=1.0, step=0.01, description='scale')
+    scale = widgets.FloatSlider(value=0.15, min=0.0, max=1.0, step=0.01, description='scale',
+                                continuous_update=True)
     dim1 = widgets.Dropdown(options=dims, index=default_ind[0], description='dim 1')
     dim2 = widgets.Dropdown(options=dims, index=default_ind[1], description='dim 2')
+    vmax = widgets.FloatSlider(value=1.0, min=0.0, max=1.0, step=0.01, description='vmax',
+                               continuous_update=True)
+    fix_vmax = widgets.Checkbox(value=False, description='fix vmax')
     
     # Sliders
     sliders, checks = [], []
-    for k in range(5):
+    for k in range(n):
         if slider_type == 'int':
             slider = widgets.IntSlider(
                 min=0, max=f.shape[k], value=f.shape[k]//2,
@@ -365,53 +369,119 @@ def interactive_proj2d(
             # Make sliders respond to check boxes.
             if not checks[k].value:
                 sliders[k].layout.display = 'none'
+        # Hide vmax slider if fix_vmax checkbox is not checked.
+        vmax.layout.display = None if fix_vmax.value else 'none' 
                     
-    for element in (dim1, dim2, *checks):
+    for element in (dim1, dim2, *checks, fix_vmax):
         element.observe(hide, names='value')
     # Initial hide
     for k in range(n):
         if k in default_ind:
             checks[k].layout.display = 'none'
             sliders[k].layout.display = 'none'
-            
-    def update(dim1, dim2, check_x, check_xp, check_y, check_yp, check_w, 
-               x, xp, y, yp, w, log, profiles, thresh, cmap):
-        """Generate the figure."""
-        if (dim1 == dim2):
-            return
-        checks = [check_x, check_xp, check_y, check_yp, check_w]
+    vmax.layout.display = 'none'
+                
+    # I don't know how else to do this.
+    def _update3(
+        cmap, log, profiles, 
+        dim1, dim2, 
+        check1, check2, check3,
+        slider1, slider2, slider3,
+        thresh, fix_vmax, vmax,
+    ):
+        checks = [check1, check2, check3]
+        sliders = [slider1, slider2, slider3]
         for dim, check in zip(dims, checks):
             if check and dim in (dim1, dim2):
                 return
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+
+    def _update4(
+        cmap, log, profiles, 
+        dim1, dim2, 
+        check1, check2, check3, check4, 
+        slider1, slider2, slider3, slider4,
+        thresh, fix_vmax, vmax,
+    ):
+        checks = [check1, check2, check3, check4]
+        sliders = [slider1, slider2, slider3, slider4]
+        for dim, check in zip(dims, checks):
+            if check and dim in (dim1, dim2):
+                return
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+
+    def _update5(
+        cmap, log, profiles, 
+        dim1, dim2, 
+        check1, check2, check3, check4, check5,
+        slider1, slider2, slider3, slider4, slider5,
+        thresh, fix_vmax, vmax,
+    ):
+        checks = [check1, check2, check3, check4, check5]
+        sliders = [slider1, slider2, slider3, slider4, slider5]
+        for dim, check in zip(dims, checks):
+            if check and dim in (dim1, dim2):
+                return
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+
+    def _update6(
+        cmap, log, profiles,
+        dim1, dim2, 
+        check1, check2, check3, check4, check5, check6,
+        slider1, slider2, slider3, slider4, slider5, slider6,
+        thresh, fix_vmax, vmax,
+    ):
+        checks = [check1, check2, check3, check4, check5, check6]
+        sliders = [slider1, slider2, slider3, slider4, slider5, slider6]
+        for dim, check in zip(dims, checks):
+            if check and dim in (dim1, dim2):
+                return
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+
+    update = {
+        3: _update3,
+        4: _update4,
+        5: _update5,
+        6: _update6,
+    }[n]
+    
+    def _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax):
+        if (dim1 == dim2):
+            return
         axis_view = [dim_to_int[dim] for dim in (dim1, dim2)]
         axis_slice = [dim_to_int[dim] for dim, check in zip(dims, checks) if check]
-        ind = [x, xp, y, yp, w]
+        ind = sliders
         for k in range(n):
             if type(ind[k]) is int:
                 ind[k] = (ind[k], ind[k] + 1)
         ind = [ind[k] for k in axis_slice]
         H = f[utils.make_slice(f.ndim, axis_slice, ind)]
         H = utils.project(H, axis_view)
-        H_max = np.max(H)
-        if H_max > 0:
-            H = H / H_max
         plot_kws.update({
             'profx': profiles,
             'profy': profiles,
             'cmap': cmap,
             'frac_thresh': 10.0**thresh,
             'norm': 'log' if log else None,
+            'vmax': vmax if fix_vmax else None,
         })
         fig, ax = pplt.subplots()
         plot_image(H, x=coords[axis_view[0]], y=coords[axis_view[1]], ax=ax, **plot_kws)
         ax.format(xlabel=dims_units[axis_view[0]], ylabel=dims_units[axis_view[1]])
         plt.show()
         
-    gui = interactive(
-        update, 
-        dim1=dim1, dim2=dim2, 
-        check_x=checks[0], check_xp=checks[1], check_y=checks[2], check_yp=checks[3], check_w=checks[4],
-        x=sliders[0], xp=sliders[1], y=sliders[2], yp=sliders[3], w=sliders[4],
-        log=log, profiles=profiles, thresh=thresh, cmap=cmap,
-    )
+    kws = dict()
+    kws['dim1'] = dim1
+    kws['dim2'] = dim2
+    for i, check in enumerate(checks, start=1):
+        kws[f'check{i}'] = check
+    for i, slider in enumerate(sliders, start=1):
+        kws[f'slider{i}'] = slider
+    kws['log'] = log
+    kws['profiles'] = profiles
+    kws['thresh'] = thresh
+    kws['fix_vmax'] = fix_vmax
+    kws['vmax'] = vmax
+    kws['cmap'] = cmap
+    gui = interactive(update, **kws)
     return gui
