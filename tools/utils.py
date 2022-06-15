@@ -1,4 +1,33 @@
 import numpy as np
+import pickle
+
+
+def save_pickle(filename, item):
+    """Convenience function to save pickled file."""
+    with open(filename, 'wb') as file:
+        pickle.dump(item, file)
+        
+        
+def load_pickle(filename):
+    """Convenience function to load pickled file."""
+    with open(filename, 'rb') as file:
+        return pickle.load(file)
+
+
+def cov2corr(cov_mat):
+    """Form correlation matrix from covariance matrix."""
+    D = np.sqrt(np.diag(cov_mat.diagonal()))
+    Dinv = np.linalg.inv(D)
+    corr_mat = np.linalg.multi_dot([Dinv, cov_mat, Dinv])
+    return corr_mat
+
+
+def symmetrize(M):
+    """Return a symmetrized version of M.
+    
+    M : A square upper or lower triangular matrix.
+    """
+    return M + M.T - np.diag(M.diagonal())
 
 
 def avoid_repeats(array, pad=1e-7):
@@ -174,17 +203,21 @@ def dist_cov(f, coords):
     """
     if coords[0].ndim == 1:
         COORDS = np.meshgrid(*coords, indexing='ij')
-    means = np.array([np.average(C, weights=f) for C in COORDS])
-    Sigma = np.zeros((f.ndim, f.ndim))
+    n = f.ndim
     f_sum = np.sum(f)
+    if f_sum == 0:
+        return np.zeros((n, n)), np.zeros((n,))
+    means = np.array([np.average(C, weights=f) for C in COORDS])
+    Sigma = np.zeros((n, n))
     for i in range(Sigma.shape[0]):
-        for j in range(Sigma.shape[1]):
+        for j in range(i + 1):
             X = COORDS[i] - means[i]
             Y = COORDS[j] - means[j]
             EX = np.sum(X * f) / f_sum
             EY = np.sum(Y * f) / f_sum
             EXY = np.sum(X * Y * f) / f_sum
             Sigma[i, j] = EXY - EX * EY
+    Sigma = symmetrize(Sigma)
     return Sigma, means
 
 
