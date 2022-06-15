@@ -383,11 +383,11 @@ def interactive_proj2d(
                 
     # I don't know how else to do this.
     def _update3(
-        cmap, log, profiles, 
+        cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3,
         slider1, slider2, slider3,
-        thresh, fix_vmax, vmax,
+        thresh, 
     ):
         checks = [check1, check2, check3]
         sliders = [slider1, slider2, slider3]
@@ -397,11 +397,11 @@ def interactive_proj2d(
         return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
 
     def _update4(
-        cmap, log, profiles, 
+        cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3, check4, 
         slider1, slider2, slider3, slider4,
-        thresh, fix_vmax, vmax,
+        thresh,
     ):
         checks = [check1, check2, check3, check4]
         sliders = [slider1, slider2, slider3, slider4]
@@ -411,11 +411,11 @@ def interactive_proj2d(
         return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
 
     def _update5(
-        cmap, log, profiles, 
+        cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3, check4, check5,
         slider1, slider2, slider3, slider4, slider5,
-        thresh, fix_vmax, vmax,
+        thresh,
     ):
         checks = [check1, check2, check3, check4, check5]
         sliders = [slider1, slider2, slider3, slider4, slider5]
@@ -425,11 +425,11 @@ def interactive_proj2d(
         return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
 
     def _update6(
-        cmap, log, profiles,
+        cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3, check4, check5, check6,
         slider1, slider2, slider3, slider4, slider5, slider6,
-        thresh, fix_vmax, vmax,
+        thresh,
     ):
         checks = [check1, check2, check3, check4, check5, check6]
         sliders = [slider1, slider2, slider3, slider4, slider5, slider6]
