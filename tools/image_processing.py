@@ -10,14 +10,19 @@ class CamSettings:
         self.name = name
         self.name_lowercase = name.lower()
         self.shape = None
-        self.pix2mm = None
+        self.pix2mm = None 
+        self.zoom = 1.0
         if self.name_lowercase == 'cam06':
             self.shape = (258, 346)
-            self.pix2mm = 0.0659  # at 1X zoom?
+            self.pix2mm = 0.0659  # at zoom=1.0?
         elif self.name_lowercase == 'cam34':
             self.shape = (512, 612)
-            self.pix2mm = 0.05  # at 1X zoom
+            self.pix2mm = 0.05  # at zoom=1.0
         self.ny, self.nx = self.shape
+        
+    def set_zoom(self, zoom):
+        self.zoom = zoom
+        self.pix2mm /= zoom
             
 
 def camera_settings(cam):
