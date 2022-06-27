@@ -57,10 +57,11 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
         floor = max(1e-12, frac_thresh * image_max)
         image[image < floor] = 0
     if log:
-        floor = 1e-12
-        if image_max > 0:
-            floor = np.min(image[image > 0])
-        image = image + floor
+        # floor = 1e-12
+        # if image_max > 0:
+        #     floor = np.min(image[image > 0])
+        # image = image + floor
+        image = np.ma.masked_less_equal(image, 0)
     mesh = ax.pcolormesh(x, y, image.T, **plot_kws)
     if contour:
         ax.contour(x, y, image.T, **contour_kws)
