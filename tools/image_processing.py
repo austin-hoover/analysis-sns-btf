@@ -13,7 +13,8 @@ class CamSettings:
         self.pix2mm = None 
         self.zoom = 1.0
         if self.name_lowercase == 'cam06':
-            self.shape = (258, 346)
+#             self.shape = (258, 346)
+            self.shape = (512, 612)
             self.pix2mm = 0.0659  # at zoom=1.0?
         elif self.name_lowercase == 'cam34':
             self.shape = (512, 612)
