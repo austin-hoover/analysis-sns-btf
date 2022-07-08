@@ -123,7 +123,7 @@ class EnergyCalculate():
         M = Ml * Mrho * M2
         return M
     
-    def getM(self,GL05=0,GL06=0,rho=None):
+    def getM(self, GL05=0, GL06=0, rho=None):
         """
         Get matrix slit-to-screen (VT04 to VS06)
         GL05 = 0 is integrated field of QH05 (positive=F)
@@ -137,7 +137,7 @@ class EnergyCalculate():
         M = M2 * M1
         return M
     
-    def calculate_xp(self,x1,x2,M):
+    def calculate_xp(self, x1, x2, M):
         """
         x1 is position of first slit (in meters)
         x2 is position of 2nd slit (meters)
@@ -145,15 +145,15 @@ class EnergyCalculate():
         xp = (x2-M[0,0]*x1)/M[0,1]
         return xp
     
-    def calculate_yp(self,y1,y2,M):
+    def calculate_yp(self, y1, y2, M):
         """
         x1 is position of first slit (in meters)
         x2 is position of 2nd slit (meters)
         """
-        yp = (y2-M[2,2]*y1)/M[2,3]
+        yp = (y2 - M[2, 2] * y1) / M[2, 3]
         return yp
 
-    def calculate_dE_slit(self,current, x, xp, GL05 = 0, GL06 = 0, rho = None, amp2meter=1.007*1e-3, ):
+    def calculate_dE_slit(self, current, x, xp, GL05=0, GL06=0, rho=None, amp2meter=1.007*1e-3):
         """
         returns delta-energy dE in MeV
         current [A]; dipole current, actually I-I0 (so, it's delta-I)
@@ -179,24 +179,23 @@ class EnergyCalculate():
         dE = (gamma - self.gamma)*self.m0
         return dE
     
-    def rho_adjust(self,current,I0 = 359):
-        rho = self.rho*(1 - self.C*current/I0)
+    def rho_adjust(self, current, I0=359):
+        rho = self.rho * (1.0 - self.C * current / I0)
         return rho 
     
-    def calculate_dE_screen(self,x3, current, x, xp, M):
+    def calculate_dE_screen(self, x3, current, x, xp, M):
         """
         returns delta-energy dE in MeV
         x3 [m]; position on VS06 screen with respect to beam center, x_screen - <x_screen>. 
         current [A]; dipole current, actually I-I0 (so, it's delta-I)
-        x [m]; x, x_slit-<x_slit>
-        xp [rad]; xp, use calculate_xp above to get from x_slit1, x_slit2
+        x [m]; x_slit - <x_slit>
+        xp [rad]; use calculate_xp above to get from x_slit1, x_slit2
         """
-        dpp = (1/M[0,5])*(x3 - M[0,0]*x - M[0,1]*xp)
-        
-        P = self.P0*(dpp+1)
-        b = np.sqrt(1 / (1 + (self.m0*self.m0)/(P*P)))
-        gamma = P/(self.m0*b)
-        dE = (gamma - self.gamma)*self.m0
+        dpp = (1.0 / M[0, 5]) * (x3 - M[0, 0] * x - M[0, 1] * xp)
+        P = self.P0 * (dpp + 1.0)
+        b = np.sqrt(1.0 / (1.0 + (self.m0 * self.m0) / (P * P)))
+        gamma = P / (self.m0 * b)
+        dE = (gamma - self.gamma) * self.m0
         return dE
     
     # -- phase conversion.    
