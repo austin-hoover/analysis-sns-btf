@@ -255,3 +255,35 @@ def rms_ellipse_dims(sig_xx, sig_yy, sig_xy):
     cx = np.sqrt(abs(sig_xx*cs**2 + sig_yy*sn**2 - 2*sig_xy*sn*cs))
     cy = np.sqrt(abs(sig_xx*sn**2 + sig_yy*cs**2 + 2*sig_xy*sn*cs))
     return angle, cx, cy
+
+
+def get_boundary_points(iterations, points, signal, thresh, pad=3.0):
+    lb = []  # "left" boundary points
+    ub = []  # "right" boundary points
+    for iteration in np.unique(iterations):
+        # Get points for this sweep.
+        idx_sweep, = np.where(iterations == iteration)
+        _points = points[idx_sweep]
+        # Make sure only the first actuator is sweeping.
+        if not np.all(np.abs(_points[:, 1:] - _points[0, 1:]) < 0.01):
+            print("More than one sweeper!")
+            break
+        _signal = signal[idx_sweep].copy()
+        # Sort by sweeper coordinate.
+        idx_sort = np.argsort(_points[:, 0])
+        _points = _points[idx_sort, :]
+        _signal = _signal[idx_sort]
+        # Find min/max sweeper coordinate with signal > thresh.
+        _valid, = np.where(_signal >= thresh)
+        if len(_valid) == 0:
+            continue
+        elif len(_valid) == 1:
+            xl = xr = _points[_valid[0], 0] 
+        else:
+            xl = _points[_valid[0], 0] 
+            xr = _points[_valid[-1], 0]
+        # Add some padding.
+        delta = pad * np.mean(np.diff(_points[:, 0]))
+        lb.append(np.hstack([xl - delta, _points[0, 1:]]))
+        ub.append(np.hstack([xr + delta, _points[0, 1:]]))
+    return np.array([lb, ub])
