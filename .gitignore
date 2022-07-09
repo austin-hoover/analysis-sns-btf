@@ -8,4 +8,8 @@ _output
 *.npz
 *.txt
 *.dat
+*.png
+*.pdf
+*.pkl
+*.gif
 
