@@ -257,7 +257,7 @@ def rms_ellipse_dims(sig_xx, sig_yy, sig_xy):
     return angle, cx, cy
 
 
-def get_boundary_points(iterations, points, signal, thresh, pad=3.0):
+def get_boundary_points(iterations, points, signal, thresh, pad=3.0, tol=0.01):
     lb = []  # "left" boundary points
     ub = []  # "right" boundary points
     for iteration in np.unique(iterations):
@@ -265,9 +265,10 @@ def get_boundary_points(iterations, points, signal, thresh, pad=3.0):
         idx_sweep, = np.where(iterations == iteration)
         _points = points[idx_sweep]
         # Make sure only the first actuator is sweeping.
-        if not np.all(np.abs(_points[:, 1:] - _points[0, 1:]) < 0.01):
-            print("More than one sweeper!")
-            break
+        if tol:
+            if not np.all(np.abs(_points[:, 1:] - _points[0, 1:]) <= tol):
+                print("More than one sweeper!")
+                break
         _signal = signal[idx_sweep].copy()
         # Sort by sweeper coordinate.
         idx_sort = np.argsort(_points[:, 0])
