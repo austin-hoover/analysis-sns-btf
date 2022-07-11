@@ -5,7 +5,7 @@ from scipy import interpolate
 from . import utils
 
 
-class CamSettings:
+class CameraSettings:
     def __init__(self, name):
         self.name = name
         self.name_lowercase = name.lower()
@@ -13,7 +13,6 @@ class CamSettings:
         self.pix2mm = None 
         self.zoom = 1.0
         if self.name_lowercase == 'cam06':
-#             self.shape = (258, 346)
             self.shape = (512, 612)
             self.pix2mm = 0.0659  # at zoom=1.0?
         elif self.name_lowercase == 'cam34':
@@ -24,11 +23,7 @@ class CamSettings:
     def set_zoom(self, zoom):
         self.zoom = zoom
         self.pix2mm /= zoom
-            
-
-def camera_settings(cam):
-    return CamSettings(cam)
-
+    
 
 def crop(image, y1=None, y2=None, x1=None, x2=None):
     return image[y1:y2, x1:x2]
