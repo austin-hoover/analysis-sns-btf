@@ -31,7 +31,8 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
                **plot_kws):
     """Plot image with profiles overlayed.
     
-    To do: clean up, add documentation.
+    To do: clean up, add documentation. Should really have separate function to
+    plot profiles.
     """
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
     if log:
@@ -72,8 +73,9 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
         prof_kws.setdefault('lw', 1.0)
         prof_kws.setdefault('scale', 0.15)
         prof_kws.setdefault('kind', 'line')
-        scale = prof_kws.pop('scale')
-        kind = prof_kws.pop('kind')
+        _prof_kws = prof_kws.copy()
+        scale = _prof_kws.pop('scale')
+        kind = _prof_kws.pop('kind')
         fx = np.sum(image, axis=1)
         fy = np.sum(image, axis=0)
         fx_max = np.max(fx)
@@ -94,14 +96,14 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
             if i == 1 and not profy:
                 continue
             if kind == 'line':
-                ax.plot(x, y, **prof_kws)
+                ax.plot(x, y, **_prof_kws)
             elif kind == 'bar':
                 if i == 0:
-                    ax.bar(x, y, **prof_kws)
+                    ax.bar(x, y, **_prof_kws)
                 else:
-                    ax.barh(y, x, **prof_kws)
+                    ax.barh(y, x, **_prof_kws)
             elif kind == 'step':
-                ax.step(x, y, where='mid', **prof_kws)
+                ax.step(x, y, where='mid', **_prof_kws)
     if return_mesh:
         return ax, mesh
     else:
