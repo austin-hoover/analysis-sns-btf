@@ -409,7 +409,7 @@ new_shape[1] *= 2.0
 new_shape[2] *= 1.1
 new_shape = tuple(new_shape.astype(int))
 info['int_shape'] = new_shape
-print('shape of interpolated array f:' new_shape)
+print('shape of interpolated array f:', new_shape)
 
 
 # In[33]:
