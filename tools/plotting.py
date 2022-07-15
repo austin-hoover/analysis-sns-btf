@@ -25,10 +25,21 @@ def linear_fit(x, y):
     return yfit, slope, intercept
 
 
-def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False, 
-               prof_kws=None, frac_thresh=None, contour=False, contour_kws=None,
-               return_mesh=False,
-               **plot_kws):
+def plot_image(
+    image, 
+    x=None, 
+    y=None, 
+    ax=None, 
+    profx=False, 
+    profy=False, 
+    prof_kws=None, 
+    frac_thresh=None, 
+    contour=False, 
+    contour_kws=None,
+    return_mesh=False, 
+    handle_log='mask',  # {'floor', 'mask'}
+    **plot_kws
+):
     """Plot image with profiles overlayed.
     
     To do: clean up, add documentation.
@@ -56,12 +67,14 @@ def plot_image(image, x=None, y=None, ax=None, profx=False, profy=False,
     if frac_thresh is not None:
         floor = max(1e-12, frac_thresh * image_max)
         image[image < floor] = 0
-    if log:
-        # floor = 1e-12
-        # if image_max > 0:
-        #     floor = np.min(image[image > 0])
-        # image = image + floor
-        image = np.ma.masked_less_equal(image, 0)
+    if log and np.any(image <= 0):
+        if handle_log == 'floor':
+            floor = 1e-12
+            if image_max > 0:
+                floor = np.min(image[image > 0])
+            image = image + floor
+        elif handle_log == 'mask':
+            image = np.ma.masked_less_equal(image, 0)
     mesh = ax.pcolormesh(x, y, image.T, **plot_kws)
     if contour:
         ax.contour(x, y, image.T, **contour_kws)
@@ -135,7 +148,7 @@ def corner(
         labels = n * ['']
     if fig_kws is None:
         fig_kws = dict()
-    fig_kws.setdefault('figwidth', 1.5 * n)
+    fig_kws.setdefault('figwidth', 1.5 * (n - 1 if diag_kind in ['None', 'none', None] else n))
     fig_kws.setdefault('aligny', True)
     if diag_kws is None:
         diag_kws = dict()
@@ -306,7 +319,7 @@ def interactive_proj2d(
         units = n * ['']
     dims_units = []
     for dim, unit in zip(dims, units):
-        dims_units.append(f'{dim}' + f' [{unit}]' if unit != '' else '')
+        dims_units.append(f'{dim}' + f' [{unit}]' if unit != '' else dim)
     dim_to_int = {dim: i for i, dim in enumerate(dims)}
     if prof_kws is None:
         prof_kws = dict()
