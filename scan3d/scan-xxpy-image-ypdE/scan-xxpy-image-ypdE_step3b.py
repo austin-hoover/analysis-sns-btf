@@ -1,30 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Interpolate 5D beam density
-
-# * Obtain the 5D phase space density (x-x'-y-y'-w) on a regular (evenly spaced, upright) grid. 
-# * We also visualize the 5D array in (unsheared) slit-screen coordinates.
-
-# $x_1$ = position of first vertical slit \
-# $x_2$ = position of second horizontal slit \
-# $y_1$ = position of horizontal slit \
-# $y_3$ = y position at view screen \
-# $x_3$ = x position at view screen \
-# 
-# $$
-# \begin{aligned}
-# x &= x_1 \\
-# y &= y_1 \\
-# x' &= \frac{x_2 - 0.35 x_1}{s_2 - s_1} \\
-# y' &= \frac{y_3 - y_1}{s_3 - s_1} \\
-# w  &= f(x_3, x_2, x_1) \\ 
-# \end{aligned}
-# $$
-
-# In[1]:
-
-
 import sys
 import os
 from os.path import join
@@ -54,56 +27,32 @@ from tools import plotting as mplt
 from tools import utils
 from tools.utils import project
 
-
-# In[2]:
-
-
 pplt.rc['grid'] = False
 pplt.rc['cmap.discrete'] = False
 pplt.rc['cmap.sequential'] = 'viridis'
 
 
-# ## Load data
-
-# In[3]:
-
-
+# Load data
+# ------------------------------------------------------------------------------
 folder = '_output'
 filenames = os.listdir(folder)
 for filename in filenames:
     if filename.startswith('rawgrid'):
         print(filename)
 
-
-# In[4]:
-
-
 filename = 'rawgrid_220429190854-scan-xxpy-image-ypdE.mmp'
 coordfilename = 'rawgrid_coordinates_220429190854-scan-xxpy-image-ypdE.npy'
-
-
-# In[5]:
-
 
 info = utils.load_pickle('_output/info.pkl')
 print('info:')
 pprint(info)
 
-
-# In[6]:
-
-
 shape = info['rawgrid_shape']  # (x1, x2, y1, y3, x3)
 dtype = info['im_dtype']
 cam = info['cam']
 
-
-# In[7]:
-
-
 f_raw = np.memmap(join(folder, filename), shape=shape, dtype=dtype, mode='r')
 print(np.info(f_raw))
-
 
 # Use the Right Hand Rule to determine the beam coordinates. [Insert image here].
 # * Cam06 
@@ -116,10 +65,6 @@ print(np.info(f_raw))
 #     * y_slit (y1) = -y_beam
 #     * y_screen (y3) = -y_beam
 #     * x_screen (x3) = +x_beam
-
-# In[8]:
-
-
 if cam.lower() == 'cam06':
     f_raw = f_raw[:, :, ::-1, ::-1, ::-1]
 elif cam.lower() == 'cam34':
@@ -127,24 +72,12 @@ elif cam.lower() == 'cam34':
     f_raw = f_raw[:, :, ::-1, ::-1, :]
 
 
-# ## Load slit coordinates
-
-# In[9]:
-
-
+## Load slit coordinates
 coords_3d = np.load(join(folder, coordfilename))  # [X1, X2, Y1]
 print('coords_3d.shape:', coords_3d.shape)
 
-
-# In[10]:
-
-
 dims = ["x1", "x2", "y1", "y3", "x3"]
 dim_to_int = {dim: i for i, dim in enumerate(dims)}
-
-
-# In[11]:
-
 
 fig, axes = pplt.subplots(nrows=3, ncols=3, figwidth=6, spanx=False, spany=False)
 for i in range(3):
@@ -157,58 +90,43 @@ for i in range(3):
         ax.axhline(np.mean(V), color='red', alpha=0.15)
     axes[i, 0].format(ylabel=dims[i])
     axes[-1, i].format(xlabel=dims[i])
-# plt.show()
-
-
+    
 # Copy the grids to cover the five-dimensional space.
-
-# In[12]:
-
-
 X1, X2, Y1 = coords_3d
 X1 = utils.copy_into_new_dim(X1, shape[3:], axis=-1)
 X2 = utils.copy_into_new_dim(X2, shape[3:], axis=-1)
 Y1 = utils.copy_into_new_dim(Y1, shape[3:], axis=-1)
-
-
-# In[13]:
-
-
 print('X1.shape =', X1.shape)
 print('X2.shape =', X2.shape)
 print('Y1.shape =', Y1.shape)
 
-
-# In[14]:
-
-
 Y3, X3 = np.meshgrid(np.arange(shape[3]), np.arange(shape[4]), indexing='ij')
 Y3 = utils.copy_into_new_dim(Y3, shape[:3], axis=0)
 X3 = utils.copy_into_new_dim(X3, shape[:3], axis=0)
-
-
-# In[15]:
-
-
 print('Y3.shape =', Y3.shape)
 print('X3.shape =', X3.shape)
 
 
 # Make lists of centered coordinates `coords_`.
-
-# In[16]:
-
-
 X1 = X1 - np.mean(X1)
 X2 = X2 - np.mean(X2)
 Y1 = Y1 - np.mean(Y1)
 Y3 = Y3 - np.mean(Y3)
 X3 = X3 - np.mean(X3)
+
+
+# Crop x3
+cut = 20
+idx = (slice(None), slice(None), slice(None), slice(None), slice(cut, -cut))
+X1 = X1[idx]
+X2 = X2[idx]
+Y1 = Y1[idx]
+Y3 = Y3[idx]
+X3 = X3[idx]
+f_raw = f_raw[idx]
+
+
 coords_ = [X1, X2, Y1, Y3, X3]
-
-
-# In[17]:
-
 
 for i, dim in enumerate(dims):
     print('dim =', dim)
@@ -219,24 +137,17 @@ for i, dim in enumerate(dims):
     print(U[idx])
     print()
 
-
+    
 # ## View 5D array in slit-screen coordinates
 
 # Correlation between planes are removed... units are dimensionless. Need to be careful interpreting these plots.
 
 # ### Projections 
 
-# In[18]:
-
-
 f_raw_min = np.min(f_raw)
 if f_raw_min < 0:
     print(f'min(f_raw) = {f_raw_min}. Clipping to 0.')
     f_raw = np.clip(f_raw, 0, None)
-
-
-# In[19]:
-
 
 frac_thresh = 1e-5
 for norm in [None, 'log']:
@@ -251,22 +162,13 @@ for norm in [None, 'log']:
         frac_thresh=frac_thresh,
     )
     plt.savefig(f"_output/slitscreen_corner_log{norm == 'log'}.png")
-    # plt.show()
 
 
 # ### Slices
 
 # Compute the indices of the maximum pixel in the 5D array.
-
-# In[20]:
-
-
 ind_max = np.unravel_index(np.argmax(f_raw), f_raw.shape)
 print('Indices of max(f_raw):', ind_max)
-
-
-# In[21]:
-
 
 axes_slice = [(k, j, i) for i in range(f_raw.ndim) for j in range(i) for k in range(j)]
 axes_view = [tuple([i for i in range(f_raw.ndim) if i not in axis])
@@ -288,56 +190,20 @@ for axis, axis_view in zip(axes_slice, axes_view):
     plt.savefig(string + '.png')
     # plt.show()
 
-
-# ### Interactive 
-
-# In[22]:
-
-
-f_raw_max = np.max(f_raw)
-
-
-# In[23]:
-
-
-# mplt.interactive_proj2d(f_raw / f_raw_max, dims=['x1', 'x2', 'y1', 'y3', 'x3'], 
-#                         slider_type='int', default_ind=(4, 3))
-
-
-# In[24]:
-
-
-# mplt.interactive_proj2d(f_raw / f_raw_max, dims=['x1', 'x2', 'y1', 'y3', 'x3'], 
-#                         slider_type='range', default_ind=(4, 3))
-
-
 # ## Transformation to phase space coordinates
 print('Transformation to phase space coordinates...')
 # Convert x3 and y3 from pixels to mm.
-
-# In[25]:
-
-
 cam_settings = ip.CameraSettings(cam)
 cam_settings.set_zoom(info['cam_zoom'])
 pix2mm_x = info['cam_pix2mm_x']
 pix2mm_y = info['cam_pix2mm_y']
 print(f"pix2mm_x = {pix2mm_x} (zoom = {info['cam_zoom']}, downscale={info['image_downscale']})")
 print(f"pix2mm_y = {pix2mm_y} (zoom = {info['cam_zoom']}, downscale={info['image_downscale']})")
-
-
-# In[26]:
-
-
 X3 = X3 * pix2mm_x
 Y3 = Y3 * pix2mm_y
 
 
 # Build the transfer matrices between the slits and the screen.
-
-# In[27]:
-
-
 a2mm = 1.009  # assume same for both dipoles
 rho = 0.3556
 GL05 = 0.0
@@ -355,10 +221,6 @@ Mscreen = ecalc.getM()  # slit-screen
 
 
 # Compute x', y', and energy w.
-
-# In[28]:
-
-
 Y = Y1.copy()  # [mm]
 YP = ecalc.calculate_yp(Y1 * 1e-3, Y3 * 1e-3, Mscreen)  # [rad]
 YP *= 1e3  # [mrad]
@@ -372,49 +234,27 @@ print('Done with xp.')
 W = ecalc.calculate_dE_screen(X3 * 1e-3, 0.0, X * 1e-3, XP * 1e-3, Mscreen)  # [MeV]
 print('Done with w.')
 
-
-# In[29]:
-
-
 del(X1, X2, Y1, X3, Y3)
 
 
 # Make lists of centered phase space coordinate grids.
-
-# In[30]:
-
-
 coords = [X, XP, Y, YP, W]
 for coord in tqdm(coords):
     coord = coord - np.mean(coord)
 
 
-# ## Interpolation 
-
+# Interpolation
+# ------------------------------------------------------------------------------
 # It makes sense to increase the resolution along some axes of the interpolation grid since we are moving from a tilted grid to an regular grid grid.
-
-# In[31]:
-
-
-M = info['M']
-M
-
-
-# In[32]:
-
-
 new_shape = np.array(shape).astype(float)
 new_shape[0] *= 1.1
-new_shape[1] *= 2.0
+new_shape[1] *= 1.8
 new_shape[2] *= 1.1
 new_shape = tuple(new_shape.astype(int))
 info['int_shape'] = new_shape
 print('shape of interpolated array f:', new_shape)
 
-
-# In[33]:
-
-
+# Define regular phase space grid.
 x_gv_new = np.linspace(np.min(X), np.max(X), new_shape[0])
 xp_gv_new = np.linspace(np.min(XP), np.max(XP), new_shape[1])
 y_gv_new = np.linspace(np.min(Y), np.max(Y), new_shape[2])
@@ -425,14 +265,9 @@ utils.save_stacked_array('_output/coords.npz', new_coords)
 
 
 # ### Test: put 2D projected phase spaces projection on upright grid
-
-# In[34]:
-
-
 grid = True
 contour = False
 norm = None
-
 gvs = [x_gv_new, xp_gv_new, y_gv_new, yp_gv_new]
 pdims = ["x [mm]", "xp [mrad", "y [mm]", "yp [mrad]", "w [MeV]"]
 for plane, (i, j) in zip(['x', 'y'], [(0, 1), (2, 3)]):
@@ -467,154 +302,73 @@ for plane, (i, j) in zip(['x', 'y'], [(0, 1), (2, 3)]):
     if contour:
         axes[1].contour(U.T, V.T, H.T, color='white', alpha=0.2, lw=0.75)
     axes.format(xlabel=pdims[i], ylabel=pdims[j], toplabels=['Original', 'Interpolated'])
+    plt.savefig('_output/interp2dsliceplane.png')
     # plt.show()
 
-
-# ### Direct 5D interpolation 
-
-# This is infeasible. Skip.
-
-# In[35]:
-
-
-# points = tuple([U.ravel() for U in [X, XP, Y, YP, W]])
-# values = a5d.ravel()
-# new_points = tuple(
-#     [U.ravel() for U in np.meshgrid(x_gv_new, xp_gv_new,
-#                                     y_gv_new, yp_gv_new, 
-#                                     w_gv_new, indexing='ij')]
-# )
-# a5d_new = interpolate.griddata(points, values, new_points, 
-#                                fill_value=0.0, method='linear')
-
-
-# ### Interpolate w for each (x, x', y, y') 
-
-# In[36]:
-
-
+    
+# Interpolate x-x'-w for each (y, y') 
+print("interpolating x-x'-w for each y-y'")
+temp_shape = (new_shape[0], new_shape[1], shape[2], shape[3], new_shape[4])
 f = np.copy(f_raw)
-f_new = np.zeros((shape[0], shape[1], shape[2], shape[3], new_shape[4]))
+f_new = np.zeros(temp_shape)
+_X, _XP, _W = np.meshgrid(new_coords[0], new_coords[1], new_coords[4], indexing='ij')
+new_points = (_X.ravel(), _XP.ravel(), _W.ravel())
+for k in trange(shape[2]):
+    for l in trange(shape[3]):
+        idx = (slice(None), slice(None), k, l, slice(None))
+        points = (
+            coords[0][idx].ravel(),
+            coords[1][idx].ravel(),
+            coords[4][idx].ravel(),
+        )
+        values = f[idx].ravel()
+        new_values = interpolate.griddata(
+            points, 
+            values, 
+            new_points, 
+            fill_value=0.0, 
+            method='linear',
+        )
+        f_new[idx] = new_values.reshape((new_shape[0], new_shape[1], new_shape[4]))
 
-
-# In[37]:
-
-print('interpolating w')
-new_points = w_gv_new
-for i in trange(shape[0]):
-    for j in range(shape[1]):
-        for k in range(shape[2]):
-            for l in range(shape[3]):
-                points = coords[4][i, j, k, l, :]
-                values = f[i, j, k, l, :]
-                f_new[i, j, k, l, :] = interpolate.griddata(
-                    points, 
-                    values, 
-                    new_points, 
-                    fill_value=0.0, 
-                    method='linear',
-                )
-
-
-# Redefine the grid coordinates: copy the x, x', y, and y' grids along the new w axis.
-
-# In[38]:
-
-
-X = utils.copy_into_new_dim(X[:, :, :, :, 0], (new_shape[4],), axis=-1)
-Y = utils.copy_into_new_dim(Y[:, :, :, :, 0], (new_shape[4],), axis=-1)
-XP = utils.copy_into_new_dim(XP[:, :, :, :, 0], (new_shape[4],), axis=-1)
-YP = utils.copy_into_new_dim(YP[:, :, :, :, 0], (new_shape[4],), axis=-1)
-W = utils.copy_into_new_dim(w_gv_new, (shape[0], shape[1], shape[2], shape[3]), axis=0)
+# Redefine the grid coordinates.
+X = np.zeros(temp_shape)
+XP = np.zeros(temp_shape)
+W = np.zeros(temp_shape)
+for k in range(shape[2]):
+    for l in range(shape[3]):
+        idx = (slice(None), slice(None), k, l, slice(None))
+        X[idx] = _X
+        XP[idx] = _XP
+        W[idx] = _W
 coords = [X, XP, Y, YP, W]
-
-
-# In[39]:
 
 print('Updated coordinate grid shapes:')
 for C in coords:
     print(C.shape)
 
-
-# ### Interpolate x-x' for each (y, y', w)
-
-# In[40]:
-
-print('interpolating x-x')
-f = np.copy(f_new)
-f_new = np.zeros((new_shape[0], new_shape[1], shape[2], shape[3], new_shape[4]))
-new_points = tuple([G.ravel() for G in np.meshgrid(x_gv_new, xp_gv_new, indexing='ij')])
-for k in trange(f.shape[2]):
-    for l in range(f.shape[3]):   
-        for m in range(f.shape[4]):
-            points = (
-                coords[0][:, :, k, l, m].ravel(),
-                coords[1][:, :, k, l, m].ravel(),
-            )
-            values = f[:, :, k, l, m].ravel()
-            new_values = interpolate.griddata(
-                points,
-                values,
-                new_points,
-                fill_value=0.0,
-                method='linear',
-            )
-            f_new[:, :, k, l, m] = new_values.reshape((new_shape[0], new_shape[1]))
-
-
-# Same thing with the coordinates. We now need to copy the x-x' grid along all other dimensions, and y, y', and w along the x and x' dimensions.
-
-# In[42]:
-
-
-_X, _XP = np.meshgrid(x_gv_new, xp_gv_new, indexing='ij')
-X = utils.copy_into_new_dim(_X, (shape[2], shape[3], new_shape[4]), axis=-1)
-XP = utils.copy_into_new_dim(_XP, (shape[2], shape[3], new_shape[4]), axis=-1)
-Y = utils.copy_into_new_dim(Y[0, 0, :, :, :], (new_shape[0], new_shape[1]), axis=0)
-YP = utils.copy_into_new_dim(YP[0, 0, :, :, :], (new_shape[0], new_shape[1]), axis=0)
-W = utils.copy_into_new_dim(W[0, 0, :, :, :], (new_shape[0], new_shape[1]), axis=0)
-coords = [X, XP, Y, YP, W]
-
-
-# In[43]:
-
-print('Updated coordinate grid shapes:')
-for C in coords:
-    print(C.shape)
-
-
-# ### Interpolate y-y' for each (x, x', w)
-
-# In[ ]:
-
-print('Interpolating y-y')
-f = f_new.copy()
+    
+print("interpolating x-x'-w for each y-y'")
+f = np.copy(f_raw)
 f_new = np.memmap('_output/f.mmp', shape=new_shape, dtype='float', mode='w+') 
-new_points = tuple([G.ravel() for G in np.meshgrid(y_gv_new, yp_gv_new, indexing='ij')])
-for i in trange(new_shape[0]):
-    for j in range(new_shape[1]):   
-        for m in range(new_shape[4]):
-            points = (
-                coords[2][i, j, :, :, m].ravel(),
-                coords[3][i, j, :, :, m].ravel(),
-            )
-            values = f[i, j, :, :, m].ravel()
-            new_values = interpolate.griddata(
-                points,
-                values,
-                new_points,
-                fill_value=0.0,
-                method='linear',
-            )
-            f_new[i, j, :, :, m] = new_values.reshape((new_shape[2], new_shape[3]))
-
-
-# In[ ]:
-
+new_points = tuple([C.ravel() for C in np.meshgrid(new_coords[2], new_coords[3], indexing='ij')])
+for i in trange(shape[0]):
+    for j in trange(shape[1]):
+        idx = (i, j, slice(None), slice(None), slice(None))
+        points = (coords[2][idx].ravel(), coords[3][idx].ravel())
+        values = f[idx].ravel()
+        new_values = interpolate.griddata(
+            points, 
+            values, 
+            new_points, 
+            fill_value=0.0, 
+            method='linear',
+        )
+        f_new[idx] = new_values.reshape((new_shape[2], new_shape[3]))
+        
 
 utils.save_pickle('_output/info.pkl', info)
 file = open('_output/info.txt', 'w')
 for key, value in info.items():
     file.write(f'{key}: {value}\n')
 file.close()
-
