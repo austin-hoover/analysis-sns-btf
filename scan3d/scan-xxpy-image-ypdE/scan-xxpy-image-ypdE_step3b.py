@@ -267,25 +267,6 @@ Mscreen = ecalc.getM()  # slit-screen
 # In[ ]:
 
 
-k = l = 0
-idx = (slice(None), slice(None), k, l, slice(None))
-x1 = X1[idx].ravel()
-x2 = X2[idx].ravel()
-x3 = X3[idx].ravel()
-
-fig = go.Figure(
-    data=go.Scatter3d(
-        x=x1, y=x2, z=x3, mode='markers',
-        marker=dict(color='black', size=1, opacity=0.5)
-    )
-)
-fig.update_layout(width=500, height=500)
-fig.show()
-
-
-# In[ ]:
-
-
 Y = Y1.copy()  # [mm]
 YP = ecalc.calculate_yp(Y1 * 1e-3, Y3 * 1e-3, Mscreen)  # [rad]
 YP *= 1e3  # [mrad]
@@ -314,27 +295,6 @@ del(X1, X2, Y1, X3, Y3)
 coords = [X, XP, Y, YP, W]
 for coord in tqdm(coords):
     coord = coord - np.mean(coord)
-
-
-# ### Temp: correlation between x-x'-w
-
-# In[ ]:
-
-
-k = l = 0
-idx = (slice(None), slice(None), k, l, slice(None))
-x = X[idx].ravel()
-xp = XP[idx].ravel()
-w = W[idx].ravel()
-
-fig = go.Figure(
-    data=go.Scatter3d(
-        x=x, y=xp, z=w, mode='markers',
-        marker=dict(color='black', size=1, opacity=0.5)
-    )
-)
-fig.update_layout(width=500, height=500)
-fig.show()
 
 
 # ## Interpolation 
@@ -415,7 +375,7 @@ for plane, (i, j) in zip(['x', 'y'], [(0, 1), (2, 3)]):
     if contour:
         axes[1].contour(U.T, V.T, H.T, color='white', alpha=0.2, lw=0.75)
     axes.format(xlabel=pdims[i], ylabel=pdims[j], toplabels=['Original', 'Interpolated'])
-    plt.show()
+    plt.savefig('_output/interp2d_test.png')
 
 
 # ### Interpolate w for each (x, x', y, y').
