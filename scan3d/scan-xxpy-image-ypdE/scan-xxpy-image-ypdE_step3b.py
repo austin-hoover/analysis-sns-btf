@@ -19,8 +19,8 @@ import imageio
 from scipy import ndimage
 from scipy import interpolate
 import skimage
-from tqdm.notebook import tqdm
-from tqdm.notebook import trange
+from tqdm import tqdm
+from tqdm import trange
 from matplotlib import pyplot as plt
 from matplotlib import colors
 import plotly.graph_objs as go
