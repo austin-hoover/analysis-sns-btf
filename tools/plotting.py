@@ -1,10 +1,3 @@
-"""Utility plotting functions.
-
-Note: In this module, `image` is assumed to have ij indexing as opposed
-to xy indexing. So `image[0]` corresponds to the x-axis and `image[1]` 
-corresponds to the y axis. Thus, when `image` is passed to a plotting 
-routine, we call `ax.pcolormesh(image.T)`.
-"""
 import numpy as np
 from scipy import optimize as opt
 from matplotlib import pyplot as plt
@@ -25,6 +18,43 @@ def linear_fit(x, y):
     return yfit, slope, intercept
 
 
+def plot_profile(image, xcoords=None, ycoords=None, ax=None, 
+                 profx=True, profy=True, kind='line', scale=0.12, **plot_kws): 
+    if xcoords is None:
+        xcoords = np.arange(image.shape[1])
+    if ycoords is None:
+        ycoords = np.arange(image.shape[0])
+    plot_kws.setdefault('lw', 0.75)
+    plot_kws.setdefault('color', 'white')
+    
+    def _normalize(profile):
+        pmax = np.max(profile)
+        if pmax > 0:
+            profile = profile / pmax
+        return profile
+    
+    px, py = [_normalize(np.sum(image, axis=i)) for i in (1, 0)]
+    x1 = xcoords
+    y1 = ycoords[0] + scale * np.abs(ycoords[-1] - ycoords[0]) * px
+    x2 = xcoords[0] + scale * np.abs(xcoords[-1] - xcoords[0]) * py
+    y2 = ycoords
+    for i, (x, y) in enumerate(zip([x1, x2], [y1, y2])):
+        if i == 0 and not profx:
+            continue
+        if i == 1 and not profy:
+            continue
+        if kind == 'line':
+            ax.plot(x, y, **plot_kws)
+        elif kind == 'bar':
+            if i == 0:
+                ax.bar(x, y, **plot_kws)
+            else:
+                ax.barh(y, x, **plot_kws)
+        elif kind == 'step':
+            ax.step(x, y, where='mid', **plot_kws)
+    return ax
+
+
 def plot_image(
     image, 
     x=None, 
@@ -40,11 +70,7 @@ def plot_image(
     handle_log='mask',  # {'floor', 'mask'}
     **plot_kws
 ):
-    """Plot image with profiles overlayed.
-    
-    To do: clean up, add documentation. Should really have separate function to
-    plot profiles.
-    """
+    """Plot image with profiles overlayed."""
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
     if log:
         if 'colorbar' in plot_kws and plot_kws['colorbar']:
@@ -56,6 +82,8 @@ def plot_image(
         contour_kws.setdefault('color', 'white')
         contour_kws.setdefault('lw', 1.0)
         contour_kws.setdefault('alpha', 0.5)
+    if prof_kws is None:
+        prof_kws = dict()
     if x is None:
         x = np.arange(image.shape[0])
     if y is None:
@@ -79,44 +107,8 @@ def plot_image(
     mesh = ax.pcolormesh(x, y, image.T, **plot_kws)
     if contour:
         ax.contour(x, y, image.T, **contour_kws)
-    if profx or profy:
-        if prof_kws is None:
-            prof_kws = dict()
-        prof_kws.setdefault('color', 'white')
-        prof_kws.setdefault('lw', 1.0)
-        prof_kws.setdefault('scale', 0.15)
-        prof_kws.setdefault('kind', 'line')
-        _prof_kws = prof_kws.copy()
-        scale = _prof_kws.pop('scale')
-        kind = _prof_kws.pop('kind')
-        fx = np.sum(image, axis=1)
-        fy = np.sum(image, axis=0)
-        fx_max = np.max(fx)
-        fy_max = np.max(fy)
-        if fx_max > 0:
-            fx = fx / fx_max
-        if fy_max > 0:
-            fy = fy / fy.max()
-        x1 = x
-        y1 = scale * np.abs(y[-1] - y[0]) * fx
-        x2 = np.abs(x[-1] - x[0]) * scale * fy
-        y1 = y1 + y[0]
-        x2 = x2 + x[0]
-        y2 = y
-        for i, (x, y) in enumerate(zip([x1, x2], [y1, y2])):
-            if i == 0 and not profx:
-                continue
-            if i == 1 and not profy:
-                continue
-            if kind == 'line':
-                ax.plot(x, y, **_prof_kws)
-            elif kind == 'bar':
-                if i == 0:
-                    ax.bar(x, y, **_prof_kws)
-                else:
-                    ax.barh(y, x, **_prof_kws)
-            elif kind == 'step':
-                ax.step(x, y, where='mid', **_prof_kws)
+    plot_profile(image, xcoords=x, ycoords=y, ax=ax, 
+                 profx=profx, profy=profy, **prof_kws)
     if return_mesh:
         return ax, mesh
     else:
@@ -316,7 +308,7 @@ def interactive_proj2d(
         coords = [np.arange(f.shape[k]) for k in range(n)]
     
     if dims is None:
-        dims = n * ['']
+        dims = [f'x{i + 1}' for i in range(n)]
     if units is None:
         units = n * ['']
     dims_units = []
