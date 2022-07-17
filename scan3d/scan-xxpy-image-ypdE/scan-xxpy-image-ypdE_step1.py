@@ -176,8 +176,8 @@ for k in trange(shape[2]):
 ## Interpolate y'
 
 # Convert $x_3$ and $y_3$ to mm.
-pix2mm_x = info['cam_pix2mm_x']
-pix2mm_y = info['cam_pix2mm_y']
+pix2mm_x = info['image_pix2mm_x']
+pix2mm_y = info['image_pix2mm_y']
 x3grid = np.arange(image_shape[1]) * pix2mm_x
 y3grid = np.arange(image_shape[0]) * pix2mm_y
 
