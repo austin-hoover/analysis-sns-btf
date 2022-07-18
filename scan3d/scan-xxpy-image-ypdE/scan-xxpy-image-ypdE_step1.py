@@ -4,6 +4,7 @@ from os.path import join
 import time
 from datetime import datetime
 import importlib
+from pprint import pprint
 import numpy as np
 import pandas as pd
 import h5py
@@ -11,8 +12,8 @@ import imageio
 from scipy import ndimage
 from scipy import interpolate
 import skimage
-from tqdm.notebook import tqdm
-from tqdm.notebook import trange
+from tqdm import tqdm
+from tqdm import trange
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
 from plotly import graph_objects as go
