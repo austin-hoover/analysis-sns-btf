@@ -259,12 +259,22 @@ elif cam.lower() == 'cam34':
 coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
 for i in range(5):
     coords[i] = coords[i] - np.mean(coords[i])
-utils.save_stacked_array(f'_output/coords_{filename}.npy', coords)
+utils.save_stacked_array(f'_output/coords_{filename}.npz', coords)
 
 # Save final array shape.
 info['int_shape'] = shape
 
+# Save info
 print('info:')
 pprint(info)
+
+# Save info as pickled dictionary for loading.
+utils.save_pickle('_output/info.pkl', info)
+
+# Save info as text file for viewing.
+file = open('_output/info.txt', 'w')
+for key, value in info.items():
+    file.write(f'{key}: {value}\n')
+file.close()
 
 print('Done.')
