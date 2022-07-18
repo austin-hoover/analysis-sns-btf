@@ -82,7 +82,8 @@ points_nn = points_n / (0.5 * distance)
 # -----------------------------------------------------------------------------   
 
 ## Interpolate y 
-
+print('Interpolating y')
+      
 # Define a regular $y$ grid.
 nsteps = [variables[key]['steps'] for key in keys]
 ygrid = np.linspace(np.min(points[:, 0]), np.max(points[:, 0]), int(nsteps[0]))
@@ -110,6 +111,7 @@ for iteration in tqdm(iteration_nums):
 
 
 ## Interpolate x-x' 
+print("Interpolating x-x'")
 
 # Build the transfer matrices between the slits and the screen. (TO DO: Something needs to change sign for VS34 relative to VS06...)
 a2mm = 1.009  # assume same for both dipoles
@@ -135,10 +137,9 @@ for iteration in iteration_nums:
     xp = 1e3 * ecalc.calculate_xp(x1 * 1e-3, x2 * 1e-3, Mslit)
     XXP[iteration - 1] = (x, xp)
 
-
 # Define the $x$-$x'$ interpolation grid. Tune `x_scale` and `xp_scale` to roughly align the grid points with the measured points.
 x_scale = 1.05
-xp_scale = 1.7
+xp_scale = 1.5
 
 x_min, xp_min = np.min(XXP, axis=0)
 x_max, xp_max = np.max(XXP, axis=0)
@@ -155,7 +156,6 @@ for xp in xpgrid:
 ax.plot(XXP[:, 0], XXP[:, 1], color='pink7', lw=0, marker='.', ms=2)
 ax.format(xlabel='x [mm]', ylabel='xp [mrad]')
 plt.savefig('_output/xxp_interp_grid.png')
-
 
 # Interpolate $x$-$x'$ for each $\left\{y, y_3, x_3\right\}$.
 shape = (len(xgrid), len(xpgrid), len(ygrid), image_shape[0], image_shape[1])
@@ -174,6 +174,7 @@ for k in trange(shape[2]):
 
             
 ## Interpolate y'
+print("Interpolating y'")
 
 # Convert $x_3$ and $y_3$ to mm.
 pix2mm_x = info['image_pix2mm_x']
@@ -182,7 +183,7 @@ x3grid = np.arange(image_shape[1]) * pix2mm_x
 y3grid = np.arange(image_shape[0]) * pix2mm_y
 
 # Make ypgrid.
-ypgrid_scale = 1.1  # scales resolution of y' interpolation grid
+ypgrid_scale = 1.3  # scales resolution of y' interpolation grid
 _Y, _Y3 = np.meshgrid(ygrid, y3grid, indexing='ij')
 _YP = 1e3 * ecalc.calculate_yp(_Y * 1e-3, _Y3 * 1e-3, Mscreen)  # [mrad]
 ypgrid = np.linspace(np.min(_YP), np.max(_YP), int(ypgrid_scale * image_shape[0]))
@@ -217,6 +218,7 @@ f = f_new.copy()
 
 
 ## Interpolate w
+print("Interpolating w")
 
 # Form the grid for the energy spread $w$.
 _W = np.zeros((shape[0], shape[1], image_shape[1]))
@@ -243,9 +245,25 @@ for i in trange(shape[0]):
                     assume_sorted=False,
                 )
                 f_new[i, j, k, l, :] = fint(wgrid)
+                
+# Flip to get coordinates in beam frame.
+if cam.lower() == 'cam06':
+    f = f[:, :, ::-1, ::-1, ::-1]
+elif cam.lower() == 'cam34':
+    # Need to fix this. The energy calculation needs to take opposite
+    # bending angle into account.
+    f = f[:, :, ::-1, ::-1, :]
 
 # Save grid coordinates.
 coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
 for i in range(5):
     coords[i] = coords[i] - np.mean(coords[i])
 utils.save_stacked_array(f'_output/coords_{filename}.npy', coords)
+
+# Save final array shape.
+info['int_shape'] = shape
+
+print('info:')
+pprint(info)
+
+print('Done.')
