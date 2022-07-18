@@ -35,7 +35,7 @@ pplt.rc['cmap.sequential'] = 'viridis'
 folder = '_output'
 info = utils.load_pickle(join(folder, 'info.pkl'))
 print('Info:')
-print(info)
+pprint(info)
 
 # Load measurement data/
 datadir = info['datadir']
