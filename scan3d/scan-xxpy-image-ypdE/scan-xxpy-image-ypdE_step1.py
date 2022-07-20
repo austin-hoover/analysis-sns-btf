@@ -1,17 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Step 1
-
-# * Load scalar, waveform and image h5 files.
-# * For each sweep, interpolate images on regular y grid. 
-# * For each y and image pixel, interpolate x-x'. (f(x, x', y, y3, x3))
-# * For each (x, xp, y, x3), interpolate yp. (f(x, x', y, y', x3))
-# * For each (x, xp, y, yp), inteprolate w. (f(x, x', y, y', w)).
-
-# In[ ]:
-
-
 import sys
 import os
 from os.path import join
@@ -40,8 +26,6 @@ from tools import plotting as mplt
 from tools import utils
 from tools.energyVS06 import EnergyCalculate
 
-
-
 pplt.rc['grid'] = False
 pplt.rc['cmap.discrete'] = False
 pplt.rc['cmap.sequential'] = 'viridis'
@@ -49,22 +33,11 @@ pplt.rc['cmap.sequential'] = 'viridis'
 
 # ## Setup
 
-# In[ ]:
-
-
 folder = '_output'
-
-
-# In[ ]:
-
 
 info = utils.load_pickle(join(folder, 'info.pkl'))
 print('info')
 pprint(info)
-
-
-# In[ ]:
-
 
 datadir = info['datadir']
 filename = info['filename']
@@ -83,9 +56,6 @@ for data in [data_sc, data_wf, data_im]:
     print()
 
 
-# In[ ]:
-
-
 variables = info['variables']
 keys = list(variables)
 ndim = len(keys)
@@ -101,25 +71,31 @@ points = np.vstack([data_sc[act] for act in acts]).T
 
 
 # Convert to beam frame coordinates.
+cam = info['cam']
+if cam.lower() not in ['cam06', 'cam34']:
+    raise ValueError('Unknown camera name!')
 
 # y slit is inserted from above, always opposite y_beam.
 points[:, 0] = -points[:, 0]
 
-# VT04/VT06 are same sign as x_beam; VT34a and VT34b are opposite. HOWEVER,
-# I do not seem to get the right answer by flipping the signs of the VT34
-# slits. It seems they have the same sign as x_beam... so don't flip for
-# now. The bend radius also flips sign (positive/negative at VS06/VS34).
-cam = info['cam'].lower()
-rho_sign = None
-if cam == 'cam06':
-    rho_sign = +1.0
-elif cam == 'cam34':
-    rho_sign = -1.0
+# VT04/VT06 are same sign as x_beam; from the BTF diagram, VT34a and VT34b 
+# appear to be opposite sign. However, I think that is wrong; they have the
+# same sign as x_beam... so don't flip for now. 
+if cam.lower() == 'cam06':
+    pass
+elif cam.lower() == 'cam34':
     # points[:, 1:] *= -1.0
-else:
-    raise ValueError('Unknown camera name!')
+    pass
+
+# The bend radius is positive/negative at VS06/VS34.
+rho_sign = None
+if cam.lower() == 'cam06':
+    rho_sign = +1.0
+elif cam.lower() == 'cam34':
+    rho_sign = -1.0
     
-# Screen (x3, y3) are always opposite (x_beam, y_beam).
+# Screen (x3, y3) are always opposite (x_beam, y_beam). (The beam is moving
+# into the screen; the first row of the image is the maximum y.)
 pix2mm_x = info['image_pix2mm_x']
 pix2mm_y = info['image_pix2mm_y']
 image_shape = info['image_shape']
@@ -132,10 +108,6 @@ y3grid = -np.arange(image_shape[0]) * pix2mm_y
 # ### Setup interpolation grids
 
 # #### y grid
-
-# In[ ]:
-
-
 y_scale = 1.1
 ygrid = np.linspace(
     np.min(points[:, 0]), 
@@ -146,11 +118,7 @@ ygrid = np.linspace(
 
 # #### x-x' grid
 
-# Build the transfer matrices between the slits and the screen. (TO DO: Something needs to change sign for VS34 relative to VS06...)
-
-# In[ ]:
-
-
+# Build the transfer matrices between the slits and the screen.
 a2mm = 1.009  # assume same for both dipoles
 rho = 0.3556  # bend radius
 GL05 = 0.0
@@ -168,18 +136,9 @@ Mscreen = ecalc.getM()  # slit-screen
 
 
 # Assume that $x$ and $x'$ do not change on each iteration (or that the only variation is noise in the readback value). Select an $x$ and $x'$ for each $\left\{y, y_3, x_3\right\}$.
-
-# In[ ]:
-
-
 iterations = data_sc['iteration']
 iteration_nums = np.unique(iterations)
 n_iterations = len(iteration_nums)
-
-
-# In[ ]:
-
-
 XXP = np.zeros((n_iterations, 2))
 for iteration in iteration_nums:
     idx = iterations == iteration
@@ -188,15 +147,9 @@ for iteration in iteration_nums:
     xp = 1e3 * ecalc.calculate_xp(x1 * 1e-3, x2 * 1e-3, Mslit)
     XXP[iteration - 1] = (x, xp)
 
-
 # Define the $x$-$x'$ interpolation grid. Tune `x_scale` and `xp_scale` to roughly align the grid points with the measured points.
-
-# In[ ]:
-
-
 x_scale = 1.1
 xp_scale = 1.5
-
 x_min, xp_min = np.min(XXP, axis=0)
 x_max, xp_max = np.max(XXP, axis=0)
 xgrid = np.linspace(x_min, x_max, int(x_scale * (nsteps[1] + 1)))
@@ -215,17 +168,6 @@ plt.savefig('_output/xxp_interp_grid.png')
 
 
 # #### y' grid
-
-# Convert $x_3$ and $y_3$ to mm.
-
-# In[ ]:
-
-
-# Define the $y'$ grid.
-
-# In[ ]:
-
-
 yp_scale = 1.25  # scales resolution of y' interpolation grid
 _Y, _Y3 = np.meshgrid(ygrid, y3grid, indexing='ij')
 _YP = 1e3 * ecalc.calculate_yp(_Y * 1e-3, _Y3 * 1e-3, Mscreen)  # [mrad]
@@ -244,10 +186,7 @@ plt.savefig('_output/yyp_interp_grid.png')
 
 
 # #### w grid
-
-# In[ ]:
 w_scale = 1.1
-
 _W = np.zeros((len(xgrid), len(xpgrid), image_shape[1]))
 for i in range(_W.shape[0]):
     for j in range(_W.shape[1]):
@@ -259,10 +198,6 @@ wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
 
 
 # Save grid coordinates.
-
-# In[ ]:
-
-
 coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
 for i in range(5):
     coords[i] = coords[i] - np.mean(coords[i])
@@ -274,21 +209,11 @@ print('Final array shape:', tuple([len(c) for c in coords]))
 
 # ### Interpolate y 
 
-# Interpolate the image stack along the $y$ axis on each iteration. (Ignore
-# any divide-by-zero warnings. These occur if there are duplicate y points.)
-# I guess 
-
-# In[ ]:
+# Interpolate the image stack along the $y$ axis on each iteration. 
 print('Interpolating y')
-
 
 cam = info['cam']
 images = data_im[cam + '_Image'].reshape((points.shape[0], image_shape[0], image_shape[1]))
-
-
-# In[ ]:
-
-
 images_3D = np.zeros((n_iterations, len(ygrid), image_shape[0], image_shape[1]))
 for count, iteration in enumerate(tqdm(iteration_nums)):
     idx, = np.where(iterations == iteration)
@@ -311,17 +236,11 @@ for count, iteration in enumerate(tqdm(iteration_nums)):
     )
     images_3D[count, ...] = fint(ygrid) 
 
-
-# In[ ]:
-
-
+    
 # ### Interpolate x-x'
 
 # Interpolate $x$-$x'$ for each $\left\{y, y_3, x_3\right\}$.
-
-# In[ ]:
 print('Interpolating x-xp')
-
 shape = (len(xgrid), len(xpgrid), len(ygrid), image_shape[0], image_shape[1])
 f = np.zeros(shape)
 for k in trange(shape[2]):
@@ -340,8 +259,6 @@ for k in trange(shape[2]):
 # ## Interpolate y'
 
 # The $y$ coordinate is already on a grid. For each $\left\{x, x', y, x_3\right\}$, transform $y_3 \rightarrow y'$ and interpolate onto `ypgrid`. 
-
-# In[ ]:
 print('Interpolating yp')
 
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), image_shape[1])
@@ -367,8 +284,6 @@ f = f_new.copy()
 # ### Interpolate energy spread $w$
 
 # Interpolate $w$ for each $\left\{x, x', y, y'\right\}$.
-
-# In[ ]:
 print('Interpolating w')
 
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
@@ -387,9 +302,6 @@ for i in trange(shape[0]):
                     assume_sorted=False,
                 )
                 f_new[i, j, k, l, :] = fint(wgrid)
-
-
-# In[ ]:
 
 
 print('info:')
