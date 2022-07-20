@@ -16,20 +16,30 @@ def intrinsic_emittances(Sigma):
 def apparent_emittances(Sigma):
     """Return apparent emittances from covariance matrix."""
     Sigma = Sigma[:4, :4]
-    eps_x = np.sqrt(la.det(Sigma[:2, :2]))
-    eps_y = np.sqrt(la.det(Sigma[2:, 2:]))
+    eps_x = _emittance(Sigma[:2, :2])
+    eps_y = _emittance(Sigma[2:, 2:])
     return eps_x, eps_y
 
 
+def _emittance(Sigma):
+    return np.sqrt(la.det(Sigma))
+
+
+def _twiss(Sigma):
+    eps = _emittance(Sigma)
+    alpha = -Sigma[0, 1] / eps
+    beta = Sigma[0, 0] / eps
+    return (alpha, beta)
+
+
 def emittances(Sigma):
-    """Return apparent and intrinsic emittances from covariance matrix."""
+    """Return rms emittances from covariance matrix."""
     Sigma = Sigma[:4, :4]
     eps_x, eps_y = apparent_emittances(Sigma)
     eps_1, eps_2 = intrinsic_emittances(Sigma)
     return eps_x, eps_y, eps_1, eps_2
-    
-    
-def twiss2D(Sigma):
+        
+def twiss(Sigma):
     """Return 2D Twiss parameters from covariance matrix."""
     Sigma = Sigma[:4, :4]
     eps_x, eps_y = apparent_emittances(Sigma)
