@@ -1,3 +1,4 @@
+"""Interpolate measured points onto regular grid in phase space."""
 import sys
 import os
 from os.path import join
@@ -31,8 +32,8 @@ pplt.rc['cmap.discrete'] = False
 pplt.rc['cmap.sequential'] = 'viridis'
 
 
-# ## Setup
-
+# Setup
+# ------------------------------------------------------------------------------
 folder = '_output'
 
 info = utils.load_pickle(join(folder, 'info.pkl'))
@@ -55,7 +56,6 @@ for data in [data_sc, data_wf, data_im]:
         print(item)
     print()
 
-
 variables = info['variables']
 keys = list(variables)
 ndim = len(keys)
@@ -69,8 +69,7 @@ Minv = np.linalg.inv(M)
 acts = info['acts']
 points = np.vstack([data_sc[act] for act in acts]).T
 
-
-# Convert to beam frame coordinates.
+## Convert to beam frame coordinates.
 cam = info['cam']
 if cam.lower() not in ['cam06', 'cam34']:
     raise ValueError('Unknown camera name!')
@@ -80,7 +79,7 @@ points[:, 0] = -points[:, 0]
 
 # VT04/VT06 are same sign as x_beam; from the BTF diagram, VT34a and VT34b 
 # appear to be opposite sign. However, I think that is wrong; they have the
-# same sign as x_beam... so don't flip for now. 
+# same sign as x_beam...
 if cam.lower() == 'cam06':
     pass
 elif cam.lower() == 'cam34':
@@ -103,11 +102,11 @@ x3grid = -np.arange(image_shape[1]) * pix2mm_x
 y3grid = -np.arange(image_shape[0]) * pix2mm_y
 
 
-# # Interpolation
+# Interpolation
+# ------------------------------------------------------------------------------
+## Setup interpolation grids
 
-# ### Setup interpolation grids
-
-# #### y grid
+### y grid
 y_scale = 1.1
 ygrid = np.linspace(
     np.min(points[:, 0]), 
@@ -115,8 +114,7 @@ ygrid = np.linspace(
     int(y_scale * (nsteps[0] + 1)),
 )
 
-
-# #### x-x' grid
+### x-x' grid
 
 # Build the transfer matrices between the slits and the screen.
 a2mm = 1.009  # assume same for both dipoles
@@ -127,15 +125,16 @@ l1 = 0.0
 l2 = 0.0
 l3 = 0.774
 L2 = 0.311  # slit2 to dipole face
-l = 0.129  # dipole face to VS06 screen (assume same for first/last dipole-screen)
+l = 0.129  # dipole face to VS06 screen (assume same for VS06/VS34)
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
 ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, 
                         amp2meter=a2mm*1e3, rho_sign=rho_sign)
 Mslit = ecalc.getM1()  # slit-slit
 Mscreen = ecalc.getM()  # slit-screen
 
-
-# Assume that $x$ and $x'$ do not change on each iteration (or that the only variation is noise in the readback value). Select an $x$ and $x'$ for each $\left\{y, y_3, x_3\right\}$.
+# Assume that $x$ and $x'$ do not change on each iteration (or that the 
+# only variation is noise in the readback value). Select an $x$ and $x'$
+# for each $\left\{y, y_3, x_3\right\}$.
 iterations = data_sc['iteration']
 iteration_nums = np.unique(iterations)
 n_iterations = len(iteration_nums)
@@ -147,7 +146,8 @@ for iteration in iteration_nums:
     xp = 1e3 * ecalc.calculate_xp(x1 * 1e-3, x2 * 1e-3, Mslit)
     XXP[iteration - 1] = (x, xp)
 
-# Define the $x$-$x'$ interpolation grid. Tune `x_scale` and `xp_scale` to roughly align the grid points with the measured points.
+# Define the $x$-$x'$ interpolation grid. Tune `x_scale` and `xp_scale` 
+# to roughly align the grid points with the measured points.
 x_scale = 1.1
 xp_scale = 1.5
 x_min, xp_min = np.min(XXP, axis=0)
@@ -167,7 +167,7 @@ ax.format(xlabel='x [mm]', ylabel='xp [mrad]')
 plt.savefig('_output/xxp_interp_grid.png')
 
 
-# #### y' grid
+### y' grid
 yp_scale = 1.25  # scales resolution of y' interpolation grid
 _Y, _Y3 = np.meshgrid(ygrid, y3grid, indexing='ij')
 _YP = 1e3 * ecalc.calculate_yp(_Y * 1e-3, _Y3 * 1e-3, Mscreen)  # [mrad]
@@ -184,8 +184,7 @@ ax.plot(_Y.ravel(), _YP.ravel(), color='pink7', lw=0, marker='.', ms=2)
 ax.format(xlabel='y [mm]', ylabel='yp [mrad]')
 plt.savefig('_output/yyp_interp_grid.png')
 
-
-# #### w grid
+### w grid
 w_scale = 1.1
 _W = np.zeros((len(xgrid), len(xpgrid), image_shape[1]))
 for i in range(_W.shape[0]):
@@ -194,8 +193,6 @@ for i in range(_W.shape[0]):
         xp = xpgrid[j]
         _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)  # [MeV]
 wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
-
-
 
 # Save grid coordinates.
 coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
@@ -207,11 +204,10 @@ info['int_shape'] = tuple([len(c) for c in coords])
 print('Final array shape:', tuple([len(c) for c in coords]))
 
 
-# ### Interpolate y 
+## Interpolate
 
 # Interpolate the image stack along the $y$ axis on each iteration. 
 print('Interpolating y')
-
 cam = info['cam']
 images = data_im[cam + '_Image'].reshape((points.shape[0], image_shape[0], image_shape[1]))
 images_3D = np.zeros((n_iterations, len(ygrid), image_shape[0], image_shape[1]))
@@ -236,8 +232,6 @@ for count, iteration in enumerate(tqdm(iteration_nums)):
     )
     images_3D[count, ...] = fint(ygrid) 
 
-    
-# ### Interpolate x-x'
 
 # Interpolate $x$-$x'$ for each $\left\{y, y_3, x_3\right\}$.
 print('Interpolating x-xp')
@@ -255,12 +249,9 @@ for k in trange(shape[2]):
             )
             f[:, :, k, l, m] = new_values.reshape((shape[0], shape[1]))
 
-
-# ## Interpolate y'
-
-# The $y$ coordinate is already on a grid. For each $\left\{x, x', y, x_3\right\}$, transform $y_3 \rightarrow y'$ and interpolate onto `ypgrid`. 
+# The $y$ coordinate is already on a grid. For each $\left\{x, x', y, x_3\right\}$,
+# transform $y_3 \rightarrow y'$ and interpolate onto `ypgrid`. 
 print('Interpolating yp')
-
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), image_shape[1])
 f_new = np.zeros(shape)
 for i in trange(shape[0]):
@@ -281,11 +272,8 @@ for i in trange(shape[0]):
 f = f_new.copy()
 
 
-# ### Interpolate energy spread $w$
-
-# Interpolate $w$ for each $\left\{x, x', y, y'\right\}$.
+# Interpolate energy spread $w$ for each $\left\{x, x', y, y'\right\}$.
 print('Interpolating w')
-
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
 savefilename = f'_output/f_{filename}.mmp'
 f_new = np.memmap(savefilename, shape=shape, dtype='float', mode='w+') 
@@ -303,7 +291,6 @@ for i in trange(shape[0]):
                 )
                 f_new[i, j, k, l, :] = fint(wgrid)
 
-
 print('info:')
 pprint(info)
 
@@ -315,3 +302,5 @@ file = open('_output/info.txt', 'w')
 for key, value in info.items():
     file.write(f'{key}: {value}\n')
 file.close()
+
+print('Done.')
