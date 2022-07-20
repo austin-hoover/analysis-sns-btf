@@ -194,15 +194,6 @@ for i in range(_W.shape[0]):
         _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)  # [MeV]
 wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
 
-# Save grid coordinates.
-coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
-for i in range(5):
-    coords[i] = coords[i] - np.mean(coords[i])
-utils.save_stacked_array(f'_output/coords_{filename}.npz', coords)
-
-info['int_shape'] = tuple([len(c) for c in coords])
-print('Final array shape:', tuple([len(c) for c in coords]))
-
 
 ## Interpolate
 
@@ -290,14 +281,22 @@ for i in trange(shape[0]):
                     assume_sorted=False,
                 )
                 f_new[i, j, k, l, :] = fint(wgrid)
+                
+# Save grid coordinates.
+coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
+for i in range(5):
+    coords[i] = coords[i] - np.mean(coords[i])
+utils.save_stacked_array(f'_output/coords_{filename}.npz', coords)
 
+# Save info
+info['int_shape'] = tuple([len(c) for c in coords])
 print('info:')
 pprint(info)
 
-# Save as pickled dictionary for easy loading.
+# Save as pickled dictionary for loading.
 utils.save_pickle('_output/info.pkl', info)
 
-# Also save as file for viewing.
+# Save as file for viewing.
 file = open('_output/info.txt', 'w')
 for key, value in info.items():
     file.write(f'{key}: {value}\n')
