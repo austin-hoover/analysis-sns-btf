@@ -340,7 +340,7 @@ for k in trange(shape[2]):
 # In[ ]:
 print('Interpolating yp')
 
-shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
+shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), image_shape[1])
 f_new = np.zeros(shape)
 for i in trange(shape[0]):
     for j in trange(shape[1]):
@@ -367,7 +367,7 @@ f = f_new.copy()
 # In[ ]:
 print('Interpolating w')
 
-
+shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
 savefilename = f'_output/f_{filename}.mmp'
 f_new = np.memmap(savefilename, shape=shape, dtype='float', mode='w+') 
 for i in trange(shape[0]):
