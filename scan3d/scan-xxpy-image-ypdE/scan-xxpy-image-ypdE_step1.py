@@ -35,13 +35,11 @@ import proplot as pplt
 from ipywidgets import interactive
 
 sys.path.append('../..')
-from tools import energyVS06 as energy
 from tools import image_processing as ip
 from tools import plotting as mplt
 from tools import utils
+from tools.energyVS06 as energy
 
-
-# In[ ]:
 
 
 pplt.rc['grid'] = False
@@ -106,22 +104,32 @@ points = np.vstack([data_sc[act] for act in acts]).T
 
 # y slit is inserted from above, always opposite y beam.
 points[:, 0] = -points[:, 0]
-
-# x1 and x2 slits sign depends on which measurement station. (Need
-# to check this!)
+# (The x1 and x2 slits sign depends on which measurement station. At first 
+# emittance station, x_beam = x_slit and the dipole bends the beam toward 
+# negative x (to the right, from a top view of the beam with z pointing up). 
+# At the second emittance station, x_beam = -x_slit and the dipole bends the
+# beam toward positive x (to the left, from a top view of the beam with z 
+# pointing up). The energy calculator class assumes we are at VS06. We can
+# use this class, without modification, to compute the energy at VS34 by 
+# NOT flipping the sign of the x_slit coordinates. The energy calculator
+# then assumes that x points left (from a top view of the beam with z pointing
+# up) and that the dipole bends to the right, which is equivalent to the 
+# situation at VS06. It is the opposite of reality, but should give the 
+# same answer.
 cam = info['cam'].lower()
 if cam == 'cam06':
-    points[:, 1:] = -points[:, 1:]
-else:
+    pass
+elif cam == 'cam34':
+    # Could flip the sign of points[:, 1:] and flip the sign of the dipole
+    # in the energy calculator, or do nothing.
     pass
 
-# Screen x3 and y3 are always opposite beam x and y.
+# Screen (x3, y3) are always opposite (x_beam, y_beam).
 pix2mm_x = info['image_pix2mm_x']
 pix2mm_y = info['image_pix2mm_y']
 image_shape = info['image_shape']
 x3grid = -np.arange(image_shape[1]) * pix2mm_x
 y3grid = -np.arange(image_shape[0]) * pix2mm_y
-
 
 
 # # Interpolation
@@ -158,7 +166,7 @@ l3 = 0.774
 L2 = 0.311  # slit2 to dipole face
 l = 0.129  # dipole face to VS06 screen (assume same for first/last dipole-screen)
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
-ecalc = energy.EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, amp2meter=a2mm*1e3)
+ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, amp2meter=a2mm*1e3)
 Mslit = ecalc.getM1()  # slit-slit
 Mscreen = ecalc.getM()  # slit-screen
 
