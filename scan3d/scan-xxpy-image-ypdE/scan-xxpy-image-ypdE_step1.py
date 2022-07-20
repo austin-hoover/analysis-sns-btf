@@ -38,7 +38,7 @@ sys.path.append('../..')
 from tools import image_processing as ip
 from tools import plotting as mplt
 from tools import utils
-from tools.energyVS06 as energy
+from tools.energyVS06 import EnergyCalculate
 
 
 
@@ -102,28 +102,23 @@ points = np.vstack([data_sc[act] for act in acts]).T
 
 # Convert to beam frame coordinates.
 
-# y slit is inserted from above, always opposite y beam.
+# y slit is inserted from above, always opposite y_beam.
 points[:, 0] = -points[:, 0]
-# (The x1 and x2 slits sign depends on which measurement station. At first 
-# emittance station, x_beam = x_slit and the dipole bends the beam toward 
-# negative x (to the right, from a top view of the beam with z pointing up). 
-# At the second emittance station, x_beam = -x_slit and the dipole bends the
-# beam toward positive x (to the left, from a top view of the beam with z 
-# pointing up). The energy calculator class assumes we are at VS06. We can
-# use this class, without modification, to compute the energy at VS34 by 
-# NOT flipping the sign of the x_slit coordinates. The energy calculator
-# then assumes that x points left (from a top view of the beam with z pointing
-# up) and that the dipole bends to the right, which is equivalent to the 
-# situation at VS06. It is the opposite of reality, but should give the 
-# same answer.
-cam = info['cam'].lower()
-if cam == 'cam06':
-    pass
-elif cam == 'cam34':
-    # Could flip the sign of points[:, 1:] and flip the sign of the dipole
-    # in the energy calculator, or do nothing.
-    pass
 
+# VT04/VT06 are same sign as x_beam; VT34a and VT34b are opposite. HOWEVER,
+# I do not seem to get the right answer by flipping the signs of the VT34
+# slits. It seems they have the same sign as x_beam... so don't flip for
+# now. The bend radius also flips sign (positive/negative at VS06/VS34).
+cam = info['cam'].lower()
+rho_sign = None
+if cam == 'cam06':
+    rho_sign = +1.0
+elif cam == 'cam34':
+    rho_sign = -1.0
+    # points[:, 1:] *= -1.0
+else:
+    raise ValueError('Unknown camera name!')
+    
 # Screen (x3, y3) are always opposite (x_beam, y_beam).
 pix2mm_x = info['image_pix2mm_x']
 pix2mm_y = info['image_pix2mm_y']
@@ -166,7 +161,8 @@ l3 = 0.774
 L2 = 0.311  # slit2 to dipole face
 l = 0.129  # dipole face to VS06 screen (assume same for first/last dipole-screen)
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
-ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, amp2meter=a2mm*1e3)
+ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, 
+                        amp2meter=a2mm*1e3, rho_sign=rho_sign)
 Mslit = ecalc.getM1()  # slit-slit
 Mscreen = ecalc.getM()  # slit-screen
 

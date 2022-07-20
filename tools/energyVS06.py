@@ -8,7 +8,7 @@ import warnings
 
 class EnergyCalculate():
     
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         """
         l1 = 0.248 # slit1 to QH05 center
         l2 = 0.210 # Qh05 center to QV06 center
@@ -17,34 +17,39 @@ class EnergyCalculate():
         l = 0.129 # dipole face to VS06 screen
         amp2meter=1.007*1e-3 -- relation of x_vs06 to delta-I
         C = 0.737 is saturation correction to dipole field (this is a measured quantity)
+        rho_sign = sign of bending radius (positive bends toward negative x, which is
+        true at VS06; negative bends toward positive x, which is true at VS34)
         """
-        self.E0 = kwargs.get('E0',2.5)
-        self.m0 = kwargs.get('m0',939.3014)
-        self.freq = kwargs.get('freq',402.5e6)
+        self.E0 = kwargs.get('E0', 2.5)
+        self.m0 = kwargs.get('m0', 939.3014)
+        self.freq = kwargs.get('freq', 402.5e6)
+        self.rho_sign = kwargs.get('rho_sign', +1.0)
         
         # -- derived quantities
         self.speed_of_light = 2.99792458e+8
-        self.gamma = self.E0/self.m0 + 1
-        self.beta = np.sqrt(1 - 1/(self.gamma**2))
+        self.gamma = self.E0 / self.m0 + 1.0
+        self.beta = np.sqrt(1.0 - 1.0 / (self.gamma**2))
         self.P0 = self.gamma * self.m0 * self.beta
-        self.brho = self.gamma*self.beta*self.m0*1e6/self.speed_of_light
+        self.brho = self.gamma * self.beta * self.m0 * 1e6 / self.speed_of_light
         
         # -- calibrated values
-        self.C = kwargs.get('C',0.737)
-        self.amp2meter = kwargs.get('amp2meter',1.007*1e3)
+        self.C = kwargs.get('C', 0.737)
+        self.amp2meter = kwargs.get('amp2meter', 1.007 * 1e3)
         
         # -- geometry terms for matrix calculations
         # For slits, I use location of HZ04,HZ06. VT04,VT06 shifted by ~.04 m
-        self.l1 = kwargs.get('l1',0.280)
-        self.l2 = kwargs.get('l2',0.210)
-        self.l3 = kwargs.get('l3',0.457)
-        self.L2 = kwargs.get('L2',0.599)
-        self.l = kwargs.get('l',0.129)
-        self.L= self.l1+self.l2+self.l3+self.L2
+        self.l1 = kwargs.get('l1', 0.280)
+        self.l2 = kwargs.get('l2', 0.210)
+        self.l3 = kwargs.get('l3', 0.457)
+        self.L2 = kwargs.get('L2', 0.599)
+        self.l = kwargs.get('l', 0.129)
+        self.L= self.l1 + self.l2 + self.l3 + self.L2
                 
-        self.rho = 0.3556
+        # Bend radius. 
+        self.rho = 0.3556 * self.rho_sign
         
-        self.z2phase = 360 * self.freq/ ( self.beta * self.speed_of_light )  * 1e-3 # mm to deg conversion
+        # mm to deg conversion
+        self.z2phase = 360.0 * self.freq / (self.beta * self.speed_of_light) * 1e-3 
  
     def getthinquad(self,kappa,Lq):
         quadM = np.matrix([[1,0,0,0,0,0],\
@@ -64,17 +69,18 @@ class EnergyCalculate():
                          [0, 0, 0, 0, 0,1]])
         return drM
     
-    def getdipole(self,rho,theta):
-        dipoM = np.matrix([[0,rho,0,0,0,rho],
-                           [-1/rho,0,0,0,0,1],
-                           [0,0,1.,rho*theta,0,0],
-                           [0,0,0,1.,0,0],
-                           [1,rho,0,0,1,rho*(theta-1)],
-                           [0,0,0,0,0,1]])
-        
-        return dipoM
+    def getdipole(self, rho, theta):
+        M = np.matrix([
+            [0, rho, 0, 0, 0, rho],
+            [-1 / rho, 0, 0, 0, 0, 1],
+            [0, 0, 1, rho * theta, 0, 0],
+            [0, 0, 0, 1, 0, 0],
+            [1, rho, 0 , 0, 1, rho * (theta - 1)],
+            [0, 0, 0, 0, 0, 1]
+        ])
+        return M
 
-    def getM1(self,GL05=0,GL06=0):
+    def getM1(self,GL05=0, GL06=0):
         """
         Get slit-slit matrix
         GL05 = 0. is integrated field of QH05 (positive=F)
@@ -84,8 +90,6 @@ class EnergyCalculate():
         Lq = 0.106 # quad length 
         kappa5 = GL05/(Lq*self.brho)
         kappa6 = -GL06/(Lq*self.brho)
-
-
 
         quad6 = self.getthinquad(kappa6,Lq)
         quad5 = self.getthinquad(kappa5,Lq)
@@ -104,8 +108,7 @@ class EnergyCalculate():
         """
         Get 2ndslit-screen matrix
         """
-        
-        if not(rho):
+        if not rho:
             rho = self.rho
             theta = np.pi/2
         else: 
@@ -115,7 +118,7 @@ class EnergyCalculate():
         M2 = self.getdrift(self.L2)
 
         # dipole 
-        Mrho = self.getdipole(rho,theta)
+        Mrho = self.getdipole(rho, theta)
 
         # Ml is just a short drift
         Ml = self.getdrift(self.l)
@@ -130,10 +133,8 @@ class EnergyCalculate():
         GL06 = 0. is integrated field of QV06 (positive=D)    
         rho = 0.3556 # dipole radius of curvature
         """
-        M1 = self.getM1(GL05=GL05,GL06=GL06)
-        
+        M1 = self.getM1(GL05=GL05, GL06=GL06)
         M2 = self.getM2(rho=rho)
-
         M = M2 * M1
         return M
     
@@ -142,7 +143,7 @@ class EnergyCalculate():
         x1 is position of first slit (in meters)
         x2 is position of 2nd slit (meters)
         """
-        xp = (x2-M[0,0]*x1)/M[0,1]
+        xp = (x2 - M[0,0] * x1) / M[0,1]
         return xp
     
     def calculate_yp(self, y1, y2, M):
@@ -168,18 +169,16 @@ class EnergyCalculate():
         """
         if not(rho):
             rho = self.rho
-        
-        x3 = current*self.amp2meter
-        M = self.getM(GL05=GL05,GL06=GL06,rho=rho)
-        dpp = (1/M[0,5])*(x3 - M[0,0]*x - M[0,1]*x)
-        
-        P = self.P0*(dpp+1)
-        b = np.sqrt(1 / (1 + (self.m0*self.m0)/(P*P)))
-        gamma = P/(self.m0*b)
-        dE = (gamma - self.gamma)*self.m0
+        x3 = current * self.amp2meter
+        M = self.getM(GL05=GL05, GL06=GL06, rho=rho)
+        dpp = (1.0 / M[0, 5]) * (x3 - M[0, 0] * x - M[0, 1] * x)
+        P = self.P0 * (dpp + 1.0)
+        b = np.sqrt(1.0 / (1.0 + (self.m0 * self.m0) / (P * P)))
+        gamma = P / (self.m0 * b)
+        dE = (gamma - self.gamma) * self.m0
         return dE
     
-    def rho_adjust(self, current, I0=359):
+    def rho_adjust(self, current, I0=359.0):
         rho = self.rho * (1.0 - self.C * current / I0)
         return rho 
     
@@ -189,7 +188,7 @@ class EnergyCalculate():
         x3 [m]; position on VS06 screen with respect to beam center, x_screen - <x_screen>. 
         current [A]; dipole current, actually I-I0 (so, it's delta-I)
         x [m]; x_slit - <x_slit>
-        xp [rad]; use calculate_xp above to get from x_slit1, x_slit2
+        xp [rad]; use `calculate_xp` above to get from x_slit1, x_slit2
         """
         dpp = (1.0 / M[0, 5]) * (x3 - M[0, 0] * x - M[0, 1] * xp)
         P = self.P0 * (dpp + 1.0)
