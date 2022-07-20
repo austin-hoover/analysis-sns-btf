@@ -340,7 +340,7 @@ for k in trange(shape[2]):
 # In[ ]:
 print('Interpolating yp')
 
-shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), image_shape[1])
+shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
 f_new = np.zeros(shape)
 for i in trange(shape[0]):
     for j in trange(shape[1]):
@@ -399,10 +399,3 @@ file = open('_output/info.txt', 'w')
 for key, value in info.items():
     file.write(f'{key}: {value}\n')
 file.close()
-
-
-# In[ ]:
-
-
-
-
