@@ -140,7 +140,7 @@ for iteration in iteration_nums:
 # Define the $x$-$x'$ interpolation grid. Tune `x_scale` and `xp_scale` 
 # to roughly align the grid points with the measured points.
 x_scale = 1.1
-xp_scale = 1.5
+xp_scale = 1.6
 x_min, xp_min = np.min(XXP, axis=0)
 x_max, xp_max = np.max(XXP, axis=0)
 xgrid = np.linspace(x_min, x_max, int(x_scale * (nsteps[2] + 1)))
@@ -159,7 +159,7 @@ plt.savefig('_output/xxp_interp_grid.png')
 
 
 ### y' grid
-yp_scale = 1.25  # scales resolution of y' interpolation grid
+yp_scale = 1.2  # scales resolution of y' interpolation grid
 _Y, _Y3 = np.meshgrid(ygrid, y3grid, indexing='ij')
 _YP = 1e3 * ecalc.calculate_yp(_Y * 1e-3, _Y3 * 1e-3, Mscreen)  # [mrad]
 ypgrid = np.linspace(
@@ -190,8 +190,8 @@ wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
 
 # Interpolate the image stack along the $y$ axis on each iteration. 
 print('Interpolating y')
-images = data_im[cam + '_Image'].reshape((len(data_im), image_shape[0], image_shape[1]))
-images_3D = np.zeros((n_iterations, len(ygrid), len(y3grid), len(x3grid))
+images = data_im[cam + '_Image'].reshape((len(data_im), len(y3grid), len(x3grid)))
+images_3D = np.zeros((n_iterations, len(ygrid), len(y3grid), len(x3grid)))
 for count, iteration in enumerate(tqdm(iteration_nums)):
     idx, = np.where(iterations == iteration)
     _points = points[idx, 0]
