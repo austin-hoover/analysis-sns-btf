@@ -56,15 +56,8 @@ for data in [data_sc, data_wf, data_im]:
         print(item)
     print()
 
-variables = info['variables']
-keys = list(variables)
-ndim = len(keys)
-center = np.array([variables[key]['center'] for key in keys])
-distance = np.array([variables[key]['distance'] for key in keys])
+keys = list(info['variables'])
 nsteps = np.array([variables[key]['steps'] for key in keys])
-
-M = info['M']
-Minv = np.linalg.inv(M)
 
 acts = info['acts']
 points = np.vstack([data_sc[act] for act in acts]).T
@@ -77,33 +70,47 @@ if cam.lower() not in ['cam06', 'cam34']:
 # y slit is inserted from above, always opposite y_beam.
 points[:, 0] = -points[:, 0]
 
-# VT04/VT06 are same sign as x_beam; from the BTF diagram, VT34a and VT34b 
-# appear to be opposite sign. However, I think that is wrong; they have the
-# same sign as x_beam...
+# VT04/VT06 are same sign as x_beam. From the BTF diagram, VT34a and VT34b 
+# appear to be opposite sign; however, I think that is wrong. 
 if cam.lower() == 'cam06':
     pass
 elif cam.lower() == 'cam34':
     # points[:, 1:] *= -1.0
     pass
+    
+# Screen (x3, y3) are always opposite (x_beam, y_beam). (The beam is moving
+# into the screen; the first row of the image is the maximum y.)
+image_shape = info['image_shape']
+y3grid = -np.arange(image_shape[0]) * info['image_pix2mm_y']
+x3grid = -np.arange(image_shape[1]) * info['image_pix2mm_x']
 
-# The bend radius is positive/negative at VS06/VS34.
+# Dipole bend radius is positive/negative at VS06/VS34.
 rho_sign = None
 if cam.lower() == 'cam06':
     rho_sign = +1.0
 elif cam.lower() == 'cam34':
     rho_sign = -1.0
-    
-# Screen (x3, y3) are always opposite (x_beam, y_beam). (The beam is moving
-# into the screen; the first row of the image is the maximum y.)
-pix2mm_x = info['image_pix2mm_x']
-pix2mm_y = info['image_pix2mm_y']
-image_shape = info['image_shape']
-x3grid = -np.arange(image_shape[1]) * pix2mm_x
-y3grid = -np.arange(image_shape[0]) * pix2mm_y
+
+# Build transfer matrices between slits/screens.
+a2mm = 1.009  # assume same for both dipoles
+rho = 0.3556  # bend radius
+GL05 = 0.0  # quad 
+GL06 = 0.0  # quad
+l1 = 0.0
+l2 = 0.0
+l3 = 0.774
+L2 = 0.311  # second slit to dipole face
+l = 0.129  # dipole face to screen
+LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
+ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, 
+                        amp2meter=a2mm*1e3, rho_sign=rho_sign)
+Mslit = ecalc.getM1()  # slit-slit
+Mscreen = ecalc.getM()  # slit-screen
 
 
 # Interpolation
 # ------------------------------------------------------------------------------
+
 ## Setup interpolation grids
 
 ### y grid
@@ -115,22 +122,6 @@ ygrid = np.linspace(
 )
 
 ### x-x' grid
-
-# Build the transfer matrices between the slits and the screen.
-a2mm = 1.009  # assume same for both dipoles
-rho = 0.3556  # bend radius
-GL05 = 0.0
-GL06 = 0.0
-l1 = 0.0
-l2 = 0.0
-l3 = 0.774
-L2 = 0.311  # slit2 to dipole face
-l = 0.129  # dipole face to VS06 screen (assume same for VS06/VS34)
-LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
-ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, 
-                        amp2meter=a2mm*1e3, rho_sign=rho_sign)
-Mslit = ecalc.getM1()  # slit-slit
-Mscreen = ecalc.getM()  # slit-screen
 
 # Assume that $x$ and $x'$ do not change on each iteration (or that the 
 # only variation is noise in the readback value). Select an $x$ and $x'$
@@ -152,9 +143,9 @@ x_scale = 1.1
 xp_scale = 1.5
 x_min, xp_min = np.min(XXP, axis=0)
 x_max, xp_max = np.max(XXP, axis=0)
-xgrid = np.linspace(x_min, x_max, int(x_scale * (nsteps[1] + 1)))
-xpgrid = np.linspace(xp_min, xp_max, int(xp_scale * (nsteps[2] + 1)))
-XXP_new = utils.get_grid_coords(xgrid, xpgrid, indexing='ij')
+xgrid = np.linspace(x_min, x_max, int(x_scale * (nsteps[2] + 1)))
+xpgrid = np.linspace(xp_min, xp_max, int(xp_scale * (nsteps[1] + 1)))
+
 
 fig, ax = pplt.subplots(figwidth=4)
 line_kws = dict(color='lightgray', lw=0.7)
@@ -191,7 +182,7 @@ for i in range(_W.shape[0]):
     for j in range(_W.shape[1]):
         x = xgrid[i]
         xp = xpgrid[j]
-        _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)  # [MeV]
+        _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)
 wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
 
 
@@ -199,42 +190,36 @@ wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
 
 # Interpolate the image stack along the $y$ axis on each iteration. 
 print('Interpolating y')
-cam = info['cam']
-images = data_im[cam + '_Image'].reshape((points.shape[0], image_shape[0], image_shape[1]))
-images_3D = np.zeros((n_iterations, len(ygrid), image_shape[0], image_shape[1]))
+images = data_im[cam + '_Image'].reshape((len(data_im), image_shape[0], image_shape[1]))
+images_3D = np.zeros((n_iterations, len(ygrid), len(y3grid), len(x3grid))
 for count, iteration in enumerate(tqdm(iteration_nums)):
     idx, = np.where(iterations == iteration)
     _points = points[idx, 0]
     _values = images[idx, :, :]
-    # There could be duplicate y positions when the sweeper is at a turning points. 
-    # I don't think it matters, but interp1d gives warnings and I'm not sure how it 
-    # handles duplicates. Just skip these points.
-    _points, idx_unique = np.unique(_points, return_index=True)
-    _values = _values[idx_unique, :, :]
-    # Interpolate y-y3-x3 image along y axis.
+    _, uind = np.unique(_points, return_index=True)                     
     fint = interpolate.interp1d(
-        _points, 
-        _values, 
+        _points[uind], 
+        _values[uind], 
         axis=0,
         kind='linear', 
         bounds_error=False,
         fill_value=0.0, 
         assume_sorted=False,
     )
-    images_3D[count, ...] = fint(ygrid) 
-
+    images_3D[count] = fint(ygrid) 
 
 # Interpolate $x$-$x'$ for each $\left\{y, y_3, x_3\right\}$.
 print('Interpolating x-xp')
-shape = (len(xgrid), len(xpgrid), len(ygrid), image_shape[0], image_shape[1])
+_new_points = utils.get_grid_coords(xgrid, xpgrid, indexing='ij')
+shape = (len(xgrid), len(xpgrid), len(ygrid), len(y3grid), len(x3grid))
 f = np.zeros(shape)
 for k in trange(shape[2]):
     for l in trange(shape[3]):
         for m in range(shape[4]):
             new_values = interpolate.griddata(
-                XXP,
+                XXP, 
                 images_3D[:, k, l, m],
-                XXP_new,
+                new_points,
                 method='linear',
                 fill_value=False,
             )
@@ -243,7 +228,7 @@ for k in trange(shape[2]):
 # The $y$ coordinate is already on a grid. For each $\left\{x, x', y, x_3\right\}$,
 # transform $y_3 \rightarrow y'$ and interpolate onto `ypgrid`. 
 print('Interpolating yp')
-shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), image_shape[1])
+shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(x3grid))
 f_new = np.zeros(shape)
 for i in trange(shape[0]):
     for j in trange(shape[1]):
@@ -272,8 +257,11 @@ for i in trange(shape[0]):
     for j in trange(shape[1]):
         for k in range(shape[2]):
             for l in range(shape[3]):
+                x = xgrid[i]
+                xp = xpgrid[j]
+                w = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)
                 fint = interpolate.interp1d(
-                    _W[i, j, :],
+                    w,
                     f[i, j, k, l, :],
                     kind='linear',
                     fill_value=0.0, 
@@ -289,7 +277,8 @@ for i in range(5):
 utils.save_stacked_array(f'_output/coords_{filename}.npz', coords)
 
 # Save info
-info['int_shape'] = tuple([len(c) for c in coords])
+info['int_shape'] = shape
+
 print('info:')
 pprint(info)
 
