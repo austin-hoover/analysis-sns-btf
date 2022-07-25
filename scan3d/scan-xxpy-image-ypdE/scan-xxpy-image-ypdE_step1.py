@@ -211,7 +211,7 @@ for count, iteration in enumerate(tqdm(iteration_nums)):
 
 # Interpolate $x$-$x'$ for each $\left\{y, y_3, x_3\right\}$.
 print('Interpolating x-xp')
-_new_points = utils.get_grid_coords(xgrid, xpgrid, indexing='ij')
+XXP_new = utils.get_grid_coords(xgrid, xpgrid, indexing='ij')
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(y3grid), len(x3grid))
 f = np.zeros(shape)
 for k in trange(shape[2]):
@@ -220,7 +220,7 @@ for k in trange(shape[2]):
             new_values = interpolate.griddata(
                 XXP, 
                 images_3D[:, k, l, m],
-                new_points,
+                XXP_new,
                 method='linear',
                 fill_value=False,
             )
