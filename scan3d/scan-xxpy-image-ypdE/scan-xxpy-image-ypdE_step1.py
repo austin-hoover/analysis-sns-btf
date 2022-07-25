@@ -55,8 +55,9 @@ for data in [data_sc, data_wf, data_im]:
     for item in data.dtype.fields.items():
         print(item)
     print()
-
-keys = list(info['variables'])
+    
+variables = info['variables']
+keys = list(variables)
 nsteps = np.array([variables[key]['steps'] for key in keys])
 
 acts = info['acts']
