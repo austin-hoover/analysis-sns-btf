@@ -273,6 +273,7 @@ def interactive_proj2d(
     units=None,
     prof_kws=None,
     cmaps=None,
+    handle_log='floor',
     **plot_kws,
 ):
     """Interactive plot of 2D projection of distribution `f`.
@@ -296,7 +297,10 @@ def interactive_proj2d(
         Dimension units.
     prof_kws : dict
         Key word arguments for 1D profile plots.
-    cmaps : dict
+    cmaps : list
+        Color map options.
+    handle_log : {'floor', 'mask'}
+        See `plot_image`.
     
     Returns
     -------
@@ -325,8 +329,10 @@ def interactive_proj2d(
         cmaps = ['viridis', 'dusk_r', 'mono_r', 'plasma']
     plot_kws.setdefault('colorbar', True)
     plot_kws['prof_kws'] = prof_kws
+    plot_kws['handle_log'] = handle_log
     
     # Widgets
+    handle_log = widgets.Dropdown(options=['floor', 'mask'], description='handle_log')
     cmap = widgets.Dropdown(options=cmaps, description='cmap')
     thresh = widgets.FloatSlider(value=-5.0, min=-8.0, max=0.0, step=0.1, 
                                  description='thresh', continuous_update=True)
@@ -391,7 +397,7 @@ def interactive_proj2d(
                 
     # I don't know how else to do this.
     def _update3(
-        cmap, log, profiles, fix_vmax, vmax,
+        handle_log, cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3,
         slider1, slider2, slider3,
@@ -402,10 +408,11 @@ def interactive_proj2d(
         for dim, check in zip(dims, checks):
             if check and dim in (dim1, dim2):
                 return
-        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, 
+                            thresh, cmap, handle_log, fix_vmax, vmax)
 
     def _update4(
-        cmap, log, profiles, fix_vmax, vmax,
+        handle_log, cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3, check4, 
         slider1, slider2, slider3, slider4,
@@ -416,10 +423,11 @@ def interactive_proj2d(
         for dim, check in zip(dims, checks):
             if check and dim in (dim1, dim2):
                 return
-        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, 
+                            thresh, cmap, handle_log, fix_vmax, vmax)
 
     def _update5(
-        cmap, log, profiles, fix_vmax, vmax,
+        handle_log, cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3, check4, check5,
         slider1, slider2, slider3, slider4, slider5,
@@ -430,10 +438,11 @@ def interactive_proj2d(
         for dim, check in zip(dims, checks):
             if check and dim in (dim1, dim2):
                 return
-        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, 
+                            thresh, cmap, handle_log, fix_vmax, vmax)
 
     def _update6(
-        cmap, log, profiles, fix_vmax, vmax,
+        handle_log, cmap, log, profiles, fix_vmax, vmax,
         dim1, dim2, 
         check1, check2, check3, check4, check5, check6,
         slider1, slider2, slider3, slider4, slider5, slider6,
@@ -444,7 +453,8 @@ def interactive_proj2d(
         for dim, check in zip(dims, checks):
             if check and dim in (dim1, dim2):
                 return
-        return _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax)
+        return _plot_figure(dim1, dim2, checks, sliders, log, profiles,
+                            thresh, cmap, handle_log, fix_vmax, vmax)
 
     update = {
         3: _update3,
@@ -453,7 +463,7 @@ def interactive_proj2d(
         6: _update6,
     }[n]
     
-    def _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, fix_vmax, vmax):
+    def _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, handle_log, fix_vmax, vmax):
         if (dim1 == dim2):
             return
         axis_view = [dim_to_int[dim] for dim in (dim1, dim2)]
@@ -472,6 +482,7 @@ def interactive_proj2d(
             'frac_thresh': 10.0**thresh,
             'norm': 'log' if log else None,
             'vmax': vmax if fix_vmax else None,
+            'handle_log': handle_log,
         })
         fig, ax = pplt.subplots()
         plot_image(H, x=coords[axis_view[0]], y=coords[axis_view[1]], ax=ax, **plot_kws)
@@ -491,5 +502,6 @@ def interactive_proj2d(
     kws['fix_vmax'] = fix_vmax
     kws['vmax'] = vmax
     kws['cmap'] = cmap
+    kws['handle_log'] = handle_log
     gui = interactive(update, **kws)
     return gui

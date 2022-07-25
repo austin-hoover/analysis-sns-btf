@@ -1,5 +1,73 @@
 import numpy as np
 import numpy.linalg as la
+from tqdm import trange
+
+from . import utils
+
+
+def dist_cov(f, coords, disp=False):
+    """Compute the distribution covariance matrix.
+    
+    Parameters
+    ----------
+    f : ndarray
+        The distribution function (weights).
+    coords : list[ndarray]
+        List of coordinates along each axis of `H`. Can also
+        provide meshgrid coordinates.
+        
+    Returns
+    -------
+    Sigma : ndarray, shape (n, n)
+    means : ndarray, shape (n,)
+    """
+    if disp:
+        print(f'Forming {f.shape} meshgrid...')
+    if coords[0].ndim == 1:
+        COORDS = np.meshgrid(*coords, indexing='ij')
+    n = f.ndim
+    f_sum = np.sum(f)
+    if f_sum == 0:
+        return np.zeros((n, n)), np.zeros((n,))
+    if disp:
+        print('Averaging...')
+    means = np.array([np.average(C, weights=f) for C in COORDS])
+    Sigma = np.zeros((n, n))
+    _range = trange if disp else range
+    for i in _range(Sigma.shape[0]):
+        for j in _range(i + 1):
+            X = COORDS[i] - means[i]
+            Y = COORDS[j] - means[j]
+            EX = np.sum(X * f) / f_sum
+            EY = np.sum(Y * f) / f_sum
+            EXY = np.sum(X * Y * f) / f_sum
+            Sigma[i, j] = EXY - EX * EY
+    Sigma = utils.symmetrize(Sigma)
+    if disp:
+        print('Done.')
+    return Sigma, means
+
+
+def rms_ellipse_dims(sig_xx, sig_yy, sig_xy):
+    """Return semi-axes and tilt angle of the RMS ellipse in the x-y plane.
+    
+    Parameters
+    ----------
+    sig_xx, sig_yy, sig_xy : float
+        Covariance between x-x, y-y, x-y.
+    
+    Returns
+    -------
+    angle : float
+        Tilt angle of the ellipse below the x axis (radians).
+    cx, cy : float
+        Semi-axes of the ellipse.
+    """
+    angle = -0.5 * np.arctan2(2 * sig_xy, sig_xx - sig_yy)
+    sn, cs = np.sin(angle), np.cos(angle)
+    cx = np.sqrt(abs(sig_xx*cs**2 + sig_yy*sn**2 - 2*sig_xy*sn*cs))
+    cy = np.sqrt(abs(sig_xx*sn**2 + sig_yy*cs**2 + 2*sig_xy*sn*cs))
+    return angle, cx, cy
 
 
 def intrinsic_emittances(Sigma):

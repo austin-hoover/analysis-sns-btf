@@ -44,17 +44,22 @@ def symmetrize(M):
     return M + M.T - np.diag(M.diagonal())
 
 
-def avoid_repeats(array, pad=1e-7):
+def is_sorted(a):
+    return np.all(a[:-1] <= a[1:])
+
+
+def avoid_repeats(a, pad=1e-12):
     """Avoid repeating points in an array.
     
     Adds a small number to each duplicate element.
     """
-    repeat_idx, = np.where(np.diff(array) == 0)
+    ind, = np.where(np.diff(a) == 0)
     counter = 1
-    for i in reversed(repeat_idx):
-        array[i] -= pad * counter
+    for i in ind:
+        a[i] += counter * pad
+        # a[i] += np.random.uniform(0.0, counter * pad)
         counter += 1
-    return array
+    return a
 
 
 def apply(M, X):
@@ -142,7 +147,7 @@ def get_grid_coords(*xi, indexing='ij'):
     return np.vstack([X.ravel() for X in np.meshgrid(*xi, indexing=indexing)]).T
 
 
-def snap(array, n=165, pad=0.1):
+def snap(array, n=165, pad=0.1, tol=0.0):
     """[Description here.]
     
     Parameters
@@ -162,7 +167,7 @@ def snap(array, n=165, pad=0.1):
     idx : ndarray, shape (?)
     """
     bins = np.linspace(np.min(array) - pad, np.max(array) + pad, 1 + n)
-    counts, bins = np.histogram(array, bins=bins)
+    counts, bins = np.histogram(array, bins=bins)    
     idx = np.digitize(array, bins, right=False)
     idx_unique = np.unique(idx)
     for i in range(len(idx_unique)):
@@ -197,64 +202,6 @@ def load_stacked_arrays(filename, axis=0):
     idx = npz_file['stacked_index']
     stacked = npz_file['stacked_array']
     return np.split(stacked, idx, axis=axis)
-
-
-def dist_cov(f, coords):
-    """Compute the distribution covariance matrix.
-    
-    Parameters
-    ----------
-    f : ndarray
-        The distribution function (weights).
-    coords : list[ndarray]
-        List of coordinates along each axis of `H`. Can also
-        provide meshgrid coordinates.
-        
-    Returns
-    -------
-    Sigma : ndarray, shape (n, n)
-    means : ndarray, shape (n,)
-    """
-    if coords[0].ndim == 1:
-        COORDS = np.meshgrid(*coords, indexing='ij')
-    n = f.ndim
-    f_sum = np.sum(f)
-    if f_sum == 0:
-        return np.zeros((n, n)), np.zeros((n,))
-    means = np.array([np.average(C, weights=f) for C in COORDS])
-    Sigma = np.zeros((n, n))
-    for i in range(Sigma.shape[0]):
-        for j in range(i + 1):
-            X = COORDS[i] - means[i]
-            Y = COORDS[j] - means[j]
-            EX = np.sum(X * f) / f_sum
-            EY = np.sum(Y * f) / f_sum
-            EXY = np.sum(X * Y * f) / f_sum
-            Sigma[i, j] = EXY - EX * EY
-    Sigma = symmetrize(Sigma)
-    return Sigma, means
-
-
-def rms_ellipse_dims(sig_xx, sig_yy, sig_xy):
-    """Return semi-axes and tilt angle of the RMS ellipse in the x-y plane.
-    
-    Parameters
-    ----------
-    sig_xx, sig_yy, sig_xy : float
-        Covariance between x-x, y-y, x-y.
-    
-    Returns
-    -------
-    angle : float
-        Tilt angle of the ellipse below the x axis (radians).
-    cx, cy : float
-        Semi-axes of the ellipse.
-    """
-    angle = -0.5 * np.arctan2(2 * sig_xy, sig_xx - sig_yy)
-    sn, cs = np.sin(angle), np.cos(angle)
-    cx = np.sqrt(abs(sig_xx*cs**2 + sig_yy*sn**2 - 2*sig_xy*sn*cs))
-    cy = np.sqrt(abs(sig_xx*sn**2 + sig_yy*cs**2 + 2*sig_xy*sn*cs))
-    return angle, cx, cy
 
 
 def get_boundary_points(iterations, points, signal, thresh, pad=3.0, tol=0.01):

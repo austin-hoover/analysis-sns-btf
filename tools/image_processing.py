@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import ndimage
 from scipy import interpolate
+import proplot as pplt
 
 from . import utils
 
@@ -40,33 +41,7 @@ def thresh(image, thresh=None, val=0, mask=False):
     return im
 
 
-def interp_along_axis(image, x, xnew, axis=0, **kws):
-    """Interpolate N-dimensional image along along one axis.
-    
-    It just calls `scipy.interpolate.interp1d`. Before doing so, `x` and
-    `image` are flipped if `x` is decreasing (such as when a slit is moving 
-    backwards). Also, we make sure that `x` has no duplicate elements.
-    
-    Parameters
-    ----------
-    array : ndarray, shape (..., N, ...)
-        An N-D array of real values. The length along the interpolation 
-        axis must be equal to the length of x.
-    x : ndarray, shape (N,)
-        The coordinates of the data points along the interpolation axis.
-    xnew : ndarray, shape (M,)
-        The coordinates at which to evaluate the interpolated image along
-        the interpolation axis.
-    axis : int
-        The axis of `image` along which to interpolate.
-    **kws
-        Key word arguments to be passes to `scipy.interpolate.interp1d`.
-    """
-    kws.setdefault('bounds_error', False)
-    kws.setdefault('fill_value', 0.0)
-    idx_sort = np.argsort(x)
-    x = x[idx_sort]
-    image = image[idx_sort, :, :]
-    x = utils.avoid_repeats(x)
-    f = interpolate.interp1d(x, image, axis=0, **kws)
-    return f(xnew)
+def to_uint8(image, cmap):
+    if type(cmap) is str:
+        cmap = pplt.Colormap(cmap)
+    return np.uint8(cmap(image) * np.iinfo(np.uint8).max)
