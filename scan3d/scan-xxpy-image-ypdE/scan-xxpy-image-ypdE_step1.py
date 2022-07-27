@@ -96,6 +96,14 @@ if cam.lower() == 'cam06':
     l3 = 0.457  # QV06 center to slit2
     L2 = 0.599  # slit2 to dipole face    
     rho_sign = +1.0  # dipole bend radius sign
+    if GL05 == 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QH05:I_Set'][0] != 0.0:
+        print('Warning: QH05 is turned on according to metadata.')
+    if GL05 != 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QH05:I_Set'][0] == 0.0:
+        print('Warning: QH05 is turned off according to metadata.')
+    if GL06 == 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QV06:I_Set'][0] != 0.0:
+        print('Warning: QH06 is turned on according to metadata.')
+    if GL06 != 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QV06:I_Set'][0] == 0.0:
+        print('Warning: QH06 is turned off according to metadata.')
 elif cam.lower() == 'cam34':
     GL05 = 0.0 
     GL06 = 0.0 
@@ -103,9 +111,9 @@ elif cam.lower() == 'cam34':
     l2 = 0.000 
     l3 = 0.774  
     L2 = 0.311 
-    # This is strange, but I find the answer closest to simulation is when
-    # I *do not* flip the screen coordinates and *do not* flip the sign of 
-    # rho. I don't know why yet!
+    # This is strange, but I find that the energy calculation is most accurate when I 
+    # do not flip x1, x2, x3, or rho. This requires us to flip the x-x' distribution
+    # at the end. Need to get rid of this hack.
     rho_sign = +1.0 
     x3grid = -x3grid
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
@@ -188,7 +196,7 @@ for i in range(_W.shape[0]):
     for j in range(_W.shape[1]):
         x = xgrid[i]
         xp = xpgrid[j]
-        _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)
+        _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, dipole_current, x * 1e-3, xp * 1e-3, Mscreen)
 wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
 
 
@@ -275,7 +283,11 @@ for i in trange(shape[0]):
                     assume_sorted=False,
                 )
                 f_new[i, j, k, l, :] = fint(wgrid)
-                
+
+# Hack: flip x-x'
+if cam.lower() == 'cam34':
+    f_new = f_new[::-1, ::-1, ...]
+
 # Save grid coordinates.
 coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
 for i in range(5):
