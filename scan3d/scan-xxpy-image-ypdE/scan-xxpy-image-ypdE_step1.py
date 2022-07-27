@@ -71,12 +71,11 @@ if cam.lower() not in ['cam06', 'cam34']:
 # y slit is inserted from above, always opposite y_beam.
 points[:, 0] = -points[:, 0]
 
-# VT04/VT06 are same sign as x_beam. From the BTF diagram, VT34a and VT34b 
-# appear to be opposite sign; however, I think that is wrong. 
+# VT04/VT06 are same sign as x_beam. VT34a and VT34b are opposite beam.
 if cam.lower() == 'cam06':
     pass
 elif cam.lower() == 'cam34':
-    # points[:, 1:] *= -1.0
+    points[:, 1:] *= -1.0
     pass
     
 # Screen (x3, y3) are always opposite (x_beam, y_beam). (The beam is moving
@@ -116,6 +115,7 @@ elif cam.lower() == 'cam34':
     # at the end. Need to get rid of this hack.
     rho_sign = +1.0 
     x3grid = -x3grid
+    points[:, 1:] *= -1.0
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
 ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, rho_sign=rho_sign)
 Mslit = ecalc.getM1(GL05=GL05, GL06=GL06)  # slit-slit
