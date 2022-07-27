@@ -85,28 +85,33 @@ image_shape = info['image_shape']
 y3grid = -np.arange(image_shape[0]) * info['image_pix2mm_y']
 x3grid = -np.arange(image_shape[1]) * info['image_pix2mm_x']
 
-# Dipole bend radius is positive/negative at VS06/VS34.
-rho_sign = None
-if cam.lower() == 'cam06':
-    rho_sign = +1.0
-elif cam.lower() == 'cam34':
-    rho_sign = -1.0
-
 # Build transfer matrices between slits/screens.
-a2mm = 1.009  # assume same for both dipoles
-rho = 0.3556  # bend radius
-GL05 = 0.0  # quad 
-GL06 = 0.0  # quad
-l1 = 0.0
-l2 = 0.0
-l3 = 0.774
-L2 = 0.311  # second slit to dipole face
-l = 0.129  # dipole face to screen
+dipole_current = 0.0  # deviation of dipole current from nominal
+l = 0.129  # dipole face to screen (assume same for first/last dipole-screen)
+if cam.lower() == 'cam06':
+    GL05 = 0.0  # QH05 integrated field strength
+    GL06 = 0.0778  # QH06 integrated field strength  (1 [A] = -0.0778 [Tm])
+    l1 = 0.280  # slit1 to QH05 center
+    l2 = 0.210  # QH05 center to QV06 center
+    l3 = 0.457  # QV06 center to slit2
+    L2 = 0.599  # slit2 to dipole face    
+    rho_sign = +1.0  # dipole bend radius sign
+elif cam.lower() == 'cam34':
+    GL05 = 0.0 
+    GL06 = 0.0 
+    l1 = 0.000 
+    l2 = 0.000 
+    l3 = 0.774  
+    L2 = 0.311 
+    # This is strange, but I find the answer closest to simulation is when
+    # I *do not* flip the screen coordinates and *do not* flip the sign of 
+    # rho. I don't know why yet!
+    rho_sign = +1.0 
+    x3grid = -x3grid
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
-ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, 
-                        amp2meter=a2mm*1e3, rho_sign=rho_sign)
-Mslit = ecalc.getM1()  # slit-slit
-Mscreen = ecalc.getM()  # slit-screen
+ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, rho_sign=rho_sign)
+Mslit = ecalc.getM1(GL05=GL05, GL06=GL06)  # slit-slit
+Mscreen = ecalc.getM(GL05=GL05, GL06=GL06)  # slit-screen
 
 
 # Interpolation
@@ -160,7 +165,7 @@ plt.savefig('_output/xxp_interp_grid.png')
 
 
 ### y' grid
-yp_scale = 1.2  # scales resolution of y' interpolation grid
+yp_scale = 1.1  # scales resolution of y' interpolation grid
 _Y, _Y3 = np.meshgrid(ygrid, y3grid, indexing='ij')
 _YP = 1e3 * ecalc.calculate_yp(_Y * 1e-3, _Y3 * 1e-3, Mscreen)  # [mrad]
 ypgrid = np.linspace(
