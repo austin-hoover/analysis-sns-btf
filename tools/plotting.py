@@ -2,6 +2,7 @@ import numpy as np
 from scipy import optimize as opt
 from matplotlib import pyplot as plt
 import proplot as pplt
+from plotly import graph_objects as go
 from ipywidgets import interactive
 from ipywidgets import widgets
 
@@ -51,7 +52,7 @@ def plot_profile(image, xcoords=None, ycoords=None, ax=None,
             else:
                 ax.barh(y, x, **plot_kws)
         elif kind == 'step':
-            ax.step(x, y, where='mid', **plot_kws)
+            ax.plot(x, y, drawstyle='steps-mid', **plot_kws)
     return ax
 
 
@@ -63,6 +64,7 @@ def plot_image(
     profx=False, 
     profy=False, 
     prof_kws=None, 
+    fill_value=None,
     frac_thresh=None, 
     contour=False, 
     contour_kws=None,
@@ -70,7 +72,7 @@ def plot_image(
     handle_log='mask',  # {'floor', 'mask'}
     **plot_kws
 ):
-    """Plot image with profiles overlayed."""
+    plot_kws.setdefault('ec', 'None')
     log = 'norm' in plot_kws and plot_kws['norm'] == 'log'
     if log:
         if 'colorbar' in plot_kws and plot_kws['colorbar']:
@@ -92,6 +94,8 @@ def plot_image(
         x = x.T
     if y.ndim == 2:
         y = y.T
+    if fill_value is not None:
+        image = np.ma.filled(image, fill_value=fill_value)
     image_max = np.max(image)
     if frac_thresh is not None:
         floor = max(1e-12, frac_thresh * image_max)
@@ -147,6 +151,8 @@ def corner(
     if diag_kws is None:
         diag_kws = dict()
     diag_kws.setdefault('color', 'black')
+    if diag_kind == 'step':
+        diag_kws.setdefault('drawstyle', 'steps-mid')
     plot_kws.setdefault('ec', 'None')
     
     if coords is None:
@@ -167,7 +173,7 @@ def corner(
         return axes
     
     fig, axes = pplt.subplots(
-        nrows=n, ncols=n, sharex=1, sharey=1, 
+        nrows=n, ncols=n, sharex=1, sharey=1,
         spanx=False, spany=False, **fig_kws
     )
     for i in range(n):
@@ -177,12 +183,13 @@ def corner(
                 ax.axis('off')
             elif i == j:
                 h = utils.project(image, j)
+                h = h / np.max(h)
                 if diag_kind == 'line':
-                    ax.plot(h, **diag_kws)
+                    ax.plot(coords[j], h, **diag_kws)
                 elif diag_kind == 'bar':
-                    ax.bar(h, **diag_kws)
+                    ax.bar(coords[j], **diag_kws)
                 elif diag_kind == 'step':
-                    ax.step(h, where='mid', **diag_kws)
+                    ax.plot(coords[j], h, **diag_kws)
             else:
                 if prof == 'edges':
                     profx = i == n - 1
@@ -201,6 +208,10 @@ def corner(
         axes[:-1, i].format(xticklabels=[])
         if i > 0:
             axes[i, 1:].format(yticklabels=[])
+    xlims = [ax.get_xlim() for ax in axes[-1, :]]
+    xlims[-1] = axes[-1, 0].get_ylim()
+    for i, xlim in enumerate(xlims):
+        axes[i, i].format(xlim=xlim)
     if return_fig:
         return fig, axes
     return axes
@@ -268,7 +279,7 @@ def interactive_proj2d(
     f, 
     coords=None,
     default_ind=(0, 1),
-    slider_type='int',  # {'int', 'range'}
+    slice_type='int',  # {'int', 'range'}
     dims=None,
     units=None,
     prof_kws=None,
@@ -289,7 +300,7 @@ def interactive_proj2d(
         Coordinate arrays along each dimension. A square grid is assumed.
     default_ind : (i, j)
         Default x and y index to plot.
-    slider_type : {'int', 'range'}
+    slice_type : {'int', 'range'}
         Whether to slice one index along the axis or a range of indices.
     dims : list[str], shape (n,)
         Dimension names.
@@ -318,7 +329,6 @@ def interactive_proj2d(
     dims_units = []
     for dim, unit in zip(dims, units):
         dims_units.append(f'{dim}' + f' [{unit}]' if unit != '' else dim)
-    dim_to_int = {dim: i for i, dim in enumerate(dims)}
     if prof_kws is None:
         prof_kws = dict()
     prof_kws.setdefault('lw', 1.0)
@@ -351,20 +361,20 @@ def interactive_proj2d(
     # Sliders
     sliders, checks = [], []
     for k in range(n):
-        if slider_type == 'int':
+        if slice_type == 'int':
             slider = widgets.IntSlider(
                 min=0, max=f.shape[k], value=f.shape[k]//2,
                 description=dims[k], 
                 continuous_update=True,
             )
-        elif slider_type == 'range':
+        elif slice_type == 'range':
             slider = widgets.IntRangeSlider(
                 value=(0, f.shape[k]), min=0, max=f.shape[k],
                 description=dims[k], 
                 continuous_update=True,
             )
         else:
-            raise ValueError('Invalid `slider_type`.')
+            raise ValueError('Invalid `slice_type`.')
         slider.layout.display = 'none'
         sliders.append(slider)
         checks.append(widgets.Checkbox(description=f'slice {dims[k]}'))
@@ -466,8 +476,8 @@ def interactive_proj2d(
     def _plot_figure(dim1, dim2, checks, sliders, log, profiles, thresh, cmap, handle_log, fix_vmax, vmax):
         if (dim1 == dim2):
             return
-        axis_view = [dim_to_int[dim] for dim in (dim1, dim2)]
-        axis_slice = [dim_to_int[dim] for dim, check in zip(dims, checks) if check]
+        axis_view = [dims.index(dim) for dim in (dim1, dim2)]
+        axis_slice = [dims.index(dim) for dim, check in zip(dims, checks) if check]
         ind = sliders
         for k in range(n):
             if type(ind[k]) is int:
@@ -505,3 +515,236 @@ def interactive_proj2d(
     kws['handle_log'] = handle_log
     gui = interactive(update, **kws)
     return gui
+
+
+def interactive_proj1d(
+    f, 
+    coords=None,
+    default_ind=0,
+    slice_type='int',  # {'int', 'range'}
+    dims=None,
+    units=None,
+    kind='bar',
+    level=None,
+    **plot_kws,
+):
+    """Interactive plot of 1D projection of distribution `f`.
+    
+    The distribution is projected onto the specified axis. Sliders provide the
+    option to slice the distribution before projecting.
+    
+    Parameters
+    ----------
+    f : ndarray
+        An n-dimensional array.
+    coords : list[ndarray]
+        Grid coordinates for each dimension.
+    default_ind : int
+        Default index to plot.
+    slice_type : {'int', 'range'}
+        Whether to slice one index along the axis or a range of indices.
+    dims : list[str], shape (n,)
+        Dimension names.
+    units : list[str], shape (n,)
+        Dimension units.
+    kind : {'bar', 'line'}
+        The kind of plot to draw.
+        
+    Returns
+    -------
+    gui : ipywidgets.widgets.interaction.interactive
+        This widget can be displayed by calling `IPython.display.display(gui)`. 
+    """
+    n = f.ndim
+    if coords is None:
+        coords = [np.arange(f.shape[k]) for k in range(n)]
+    
+    if dims is None:
+        dims = [f'x{i + 1}' for i in range(n)]
+    if units is None:
+        units = n * ['']
+    dims_units = []
+    for dim, unit in zip(dims, units):
+        dims_units.append(f'{dim}' + f' [{unit}]' if unit != '' else dim)
+    plot_kws.setdefault('color', 'black')
+    
+    # Widgets
+    dim1 = widgets.Dropdown(options=dims, index=default_ind, description='dim')
+    
+    # Sliders
+    sliders, checks = [], []
+    for k in range(n):
+        if slice_type == 'int':
+            slider = widgets.IntSlider(
+                min=0, max=f.shape[k], value=f.shape[k]//2,
+                description=dims[k], 
+                continuous_update=True,
+            )
+        elif slice_type == 'range':
+            slider = widgets.IntRangeSlider(
+                value=(0, f.shape[k]), min=0, max=f.shape[k],
+                description=dims[k], 
+                continuous_update=True,
+            )
+        else:
+            raise ValueError('Invalid `slice_type`.')
+        slider.layout.display = 'none'
+        sliders.append(slider)
+        checks.append(widgets.Checkbox(description=f'slice {dims[k]}'))
+        
+    # Hide/show sliders.
+    def hide(button):
+        for k in range(n):
+            # Hide elements for dimensions being plotted.
+            valid = dims[k] != dim1.value
+            disp = None if valid else 'none'
+            for element in [sliders[k], checks[k]]:
+                element.layout.display = disp
+            # Uncheck boxes for dimensions being plotted. 
+            if not valid and checks[k].value:
+                checks[k].value = False
+            # Make sliders respond to check boxes.
+            if not checks[k].value:
+                sliders[k].layout.display = 'none'
+                    
+    for element in (dim1, *checks):
+        element.observe(hide, names='value')
+    # Initial hide
+    for k in range(n):
+        if k == default_ind:
+            checks[k].layout.display = 'none'
+            sliders[k].layout.display = 'none'
+                
+    # I don't know how else to do this.
+    def _update2(
+        dim1, 
+        check1, check2,
+        slider1, slider2,
+    ):
+        checks = [check1, check2]
+        sliders = [slider1, slider2]
+        for dim, check in zip(dims, checks):
+            if check and dim == dim1:
+                return
+        return _plot_figure(dim1, checks, sliders)
+
+    def _update3(
+        dim1, 
+        check1, check2, check3,
+        slider1, slider2, slider3,
+    ):
+        checks = [check1, check2, check3]
+        sliders = [slider1, slider2, slider3]
+        for dim, check in zip(dims, checks):
+            if check and dim == dim1:
+                return
+        return _plot_figure(dim1, checks, sliders)
+    
+    def _update4(
+        dim1, 
+        check1, check2, check3, check4,
+        slider1, slider2, slider3, slider4,
+    ):
+        checks = [check1, check2, check3, check4]
+        sliders = [slider1, slider2, slider3, slider4]
+        for dim, check in zip(dims, checks):
+            if check and dim == dim1:
+                return
+        return _plot_figure(dim1, checks, sliders)
+
+    def _update5(
+        dim1, 
+        check1, check2, check3, check4, check5,
+        slider1, slider2, slider3, slider4, slider5,
+    ):
+        checks = [check1, check2, check3, check4, check5]
+        sliders = [slider1, slider2, slider3, slider4, slider5]
+        for dim, check in zip(dims, checks):
+            if check and dim == dim1:
+                return
+        return _plot_figure(dim1, checks, sliders)
+    
+    def _update6(
+        dim1, 
+        check1, check2, check3, check4, check5, check6,
+        slider1, slider2, slider3, slider4, slider5, slider6,
+    ):
+        checks = [check1, check2, check3, check4, check5, check6]
+        sliders = [slider1, slider2, slider3, slider4, slider5, slider6]
+        for dim, check in zip(dims, checks):
+            if check and dim == dim1:
+                return
+        return _plot_figure(dim1, checks, sliders)
+
+    update_dict = {
+        2: _update2,
+        3: _update3,
+        4: _update4,
+        5: _update5,
+        6: _update6,
+    }
+    update = update_dict[n]
+    
+    def _plot_figure(dim1, checks, sliders):
+        axis_view = dims.index(dim1)
+        axis_slice = [dims.index(dim) for dim, check in zip(dims, checks) if check]
+        ind = sliders
+        for k in range(n):
+            if type(ind[k]) is int:
+                ind[k] = (ind[k], ind[k] + 1)
+        ind = [ind[k] for k in axis_slice]
+        _f = f[utils.make_slice(f.ndim, axis_slice, ind)]
+        p = utils.project(_f, axis_view)
+
+        fig, ax = pplt.subplots(figsize=(4.5, 1.5))
+        ax.format(xlabel=dims_units[axis_view])
+        ax.bar(coords[axis_view], p / np.sum(p), **plot_kws)
+        plt.show()
+        
+    kws = dict()
+    kws['dim1'] = dim1
+    for i, check in enumerate(checks, start=1):
+        kws[f'check{i}'] = check
+    for i, slider in enumerate(sliders, start=1):
+        kws[f'slider{i}'] = slider
+    gui = interactive(update, **kws)
+    return gui
+
+
+
+# Plotly
+# --------------------------------------------------------------------
+def plotly_wire(data=None, x=None, y=None, layout=None, uaxis=None):
+    Z = data
+    if x is None:
+        x = np.arange(Z.shape[0])
+    if y is None:
+        y = np.arange(Z.shape[1])
+    X, Y = np.meshgrid(x, y, indexing='ij')    
+    lines = []
+    line_marker = dict(color='black', width=3)
+    for x, y, z in zip(X, Y, Z):
+        lines.append(go.Scatter3d(x=x, y=y, z=z, mode='lines', line=line_marker))
+
+    if uaxis is None:
+        uaxis= dict(
+            gridcolor='rgb(255, 255, 255)',
+            zerolinecolor='rgb(255, 255, 255)',
+            showbackground=True,
+            backgroundcolor='rgb(230, 230,230)',
+        )
+    if layout is None:
+        layout = go.Layout(
+            width=500,
+            height=500,
+            showlegend=False,
+        )
+    fig = go.Figure(data=lines, layout=layout)
+    fig.update_layout(
+        scene=dict(
+            xaxis=uaxis, 
+            yaxis=uaxis,
+            zaxis=uaxis,
+        ),
+    )
+    return fig
