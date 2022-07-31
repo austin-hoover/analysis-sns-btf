@@ -1,10 +1,24 @@
-"""Interpolate measured points onto regular grid in phase space."""
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Step 1
+
+# * Load scalar, waveform and image h5 files.
+# * For each sweep, interpolate images on regular y grid. 
+# * For each y and image pixel, interpolate x-x'. (f(x, x', y, y3, x3))
+# * For each (x, xp, y, x3), interpolate yp. (f(x, x', y, y', x3))
+# * For each (x, xp, y, yp), inteprolate w. (f(x, x', y, y', w)).
+
+# In[1]:
+
+
 import sys
 import os
 from os.path import join
 import time
 from datetime import datetime
 import importlib
+import json
 from pprint import pprint
 import numpy as np
 import pandas as pd
@@ -20,25 +34,41 @@ from matplotlib.patches import Ellipse
 from plotly import graph_objects as go
 import proplot as pplt
 from ipywidgets import interactive
+from ipywidgets import widgets
 
 sys.path.append('../..')
+from tools.energyVS06 import EnergyCalculate
 from tools import image_processing as ip
 from tools import plotting as mplt
 from tools import utils
-from tools.energyVS06 import EnergyCalculate
+
+
+# In[2]:
+
 
 pplt.rc['grid'] = False
 pplt.rc['cmap.discrete'] = False
 pplt.rc['cmap.sequential'] = 'viridis'
 
 
-# Setup
-# ------------------------------------------------------------------------------
+# ## Setup
+
+# In[3]:
+
+
 folder = '_output'
+
+
+# In[4]:
+
 
 info = utils.load_pickle(join(folder, 'info.pkl'))
 print('info')
 pprint(info)
+
+
+# In[5]:
+
 
 datadir = info['datadir']
 filename = info['filename']
@@ -55,250 +85,345 @@ for data in [data_sc, data_wf, data_im]:
     for item in data.dtype.fields.items():
         print(item)
     print()
-    
+
+
+# In[6]:
+
+
 variables = info['variables']
 keys = list(variables)
 nsteps = np.array([variables[key]['steps'] for key in keys])
 
 acts = info['acts']
+print(acts)
 points = np.vstack([data_sc[act] for act in acts]).T
+points = points[:, ::-1]  # x, x2, y
+nsteps = nsteps[::-1]
 
-## Convert to beam frame coordinates.
 cam = info['cam']
+print(f"cam = '{cam}'")
 if cam.lower() not in ['cam06', 'cam34']:
-    raise ValueError('Unknown camera name!')
+    raise ValueError(f"Unknown camera name '{cam}'.")
 
-# y slit is inserted from above, always opposite y_beam.
-points[:, 0] = -points[:, 0]
 
-# VT04/VT06 are same sign as x_beam. VT34a and VT34b are opposite beam.
-if cam.lower() == 'cam06':
-    pass
-elif cam.lower() == 'cam34':
-    points[:, 1:] *= -1.0
-    pass
-    
-# Screen (x3, y3) are always opposite (x_beam, y_beam). (The beam is moving
-# into the screen; the first row of the image is the maximum y.)
+# ## Convert to beam frame coordinates
+
+# In[7]:
+
+
+## y slit is inserted from above, always opposite y beam.
+points[:, 2] = -points[:, 2]
+
+## Screen coordinates (x3, y3) are always opposite beam (x, y).
 image_shape = info['image_shape']
-y3grid = -np.arange(image_shape[0]) * info['image_pix2mm_y']
 x3grid = -np.arange(image_shape[1]) * info['image_pix2mm_x']
+y3grid = -np.arange(image_shape[0]) * info['image_pix2mm_y']
 
-# Build transfer matrices between slits/screens.
+# VT04/VT06 are same sign as x_beam; VT34a and VT34b are opposite.
+if cam.lower() == 'cam34':
+    points[:, :2] = -points[:, :2]
+
+
+# ## Setup interpolation grids
+
+# Build the transfer matrices between the slits and the screen. 
+
+# In[8]:
+
+
+# Eventually switch to saving metadata dict as pickled file in Step 0, then loading here.
+_file = h5py.File(join(datadir, filename + '.h5'), 'r')
+if 'config' in _file:
+    config = _file['config']
+    metadata = dict()
+    for name in config['metadata'].dtype.names:
+        metadata[name] = config['metadata'][name]
+else:
+    # Older measurement; metadata is in json file.
+    metadata = json.load(open(join(datadir, filename + '-metadata.json'), 'r'))
+    _metadata = dict()
+    for _dict in metadata.values():
+        for key, value in _dict.items():
+            _metadata[key] = value
+    metadata = _metadata
+pprint(metadata)
+
+
+# In[9]:
+
+
 dipole_current = 0.0  # deviation of dipole current from nominal
 l = 0.129  # dipole face to screen (assume same for first/last dipole-screen)
 if cam.lower() == 'cam06':
-    GL05 = 0.0  # QH05 integrated field strength
-    GL06 = 0.0778  # QH06 integrated field strength  (1 [A] = -0.0778 [Tm])
+    GL05 = 0.0  # QH05 integrated field strength (1 [A] = 0.0778 [Tm])
+    GL06 = 0.0778  # QH06 integrated field strength (1 [A] = 0.0778 [Tm])
     l1 = 0.280  # slit1 to QH05 center
     l2 = 0.210  # QH05 center to QV06 center
     l3 = 0.457  # QV06 center to slit2
     L2 = 0.599  # slit2 to dipole face    
     rho_sign = +1.0  # dipole bend radius sign
-    if GL05 == 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QH05:I_Set'][0] != 0.0:
+    if GL05 == 0.0 and metadata['BTF_MEBT_Mag:PS_QH05:I_Set'] != 0.0:
         print('Warning: QH05 is turned on according to metadata.')
-    if GL05 != 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QH05:I_Set'][0] == 0.0:
+    if GL05 != 0.0 and metadata['BTF_MEBT_Mag:PS_QH05:I_Set'] == 0.0:
         print('Warning: QH05 is turned off according to metadata.')
-    if GL06 == 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QV06:I_Set'][0] != 0.0:
+    if GL06 == 0.0 and metadata['BTF_MEBT_Mag:PS_QV06:I_Set'] != 0.0:
         print('Warning: QH06 is turned on according to metadata.')
-    if GL06 != 0.0 and file['config']['metadata']['BTF_MEBT_Mag:PS_QV06:I_Set'][0] == 0.0:
+    if GL06 != 0.0 and metadata['BTF_MEBT_Mag:PS_QV06:I_Set'] == 0.0:
         print('Warning: QH06 is turned off according to metadata.')
 elif cam.lower() == 'cam34':
-    GL05 = 0.0 
-    GL06 = 0.0 
-    l1 = 0.000 
-    l2 = 0.000 
-    l3 = 0.774  
-    L2 = 0.311 
-    # This is strange, but I find that the energy calculation is most accurate when I 
-    # do not flip x1, x2, x3, or rho. This requires us to flip the x-x' distribution
-    # at the end. Need to get rid of this hack.
-    rho_sign = +1.0 
+    GL05 = 0.0  # QH05 integrated field strength
+    GL06 = 0.0  # QH06 integrated field strength
+    l1 = 0.000  # slit1 to QH05 center
+    l2 = 0.000  # QH05 center to QV06 center
+    l3 = 0.774  # QV06 center to slit2
+    L2 = 0.311  # slit2 to dipole face
+    # Weird... I can only get the right answer for energy if I *do not* flip rho,
+    # x1, x2, and x3. I then flip x and xp at the very end.
+    rho_sign = +1.0  # dipole bend radius sign
     x3grid = -x3grid
-    points[:, 1:] *= -1.0
+    points[:, :2] = -points[:, :2]
 LL = l1 + l2 + l3 + L2  # distance from emittance plane to dipole entrance
 ecalc = EnergyCalculate(l1=l1, l2=l2, l3=l3, L2=L2, l=l, rho_sign=rho_sign)
 Mslit = ecalc.getM1(GL05=GL05, GL06=GL06)  # slit-slit
 Mscreen = ecalc.getM(GL05=GL05, GL06=GL06)  # slit-screen
 
 
-# Interpolation
-# ------------------------------------------------------------------------------
+# Convert to x'.
 
-## Setup interpolation grids
+# In[10]:
 
-### y grid
-y_scale = 1.1
-ygrid = np.linspace(
-    np.min(points[:, 0]), 
-    np.max(points[:, 0]), 
-    int(y_scale * (nsteps[0] + 1)),
-)
 
-### x-x' grid
+points[:, 1] = 1e3 * ecalc.calculate_xp(points[:, 0] * 1e-3, points[:, 1] * 1e-3, Mslit) 
 
-# Assume that $x$ and $x'$ do not change on each iteration (or that the 
-# only variation is noise in the readback value). Select an $x$ and $x'$
-# for each $\left\{y, y_3, x_3\right\}$.
+
+# Center points at zero.
+
+# In[11]:
+
+
+points -= np.mean(points, axis=0)
+
+
+# Make grids.
+
+# In[12]:
+
+
+mins = np.min(points, axis=0)
+maxs = np.max(points, axis=0)
+scales = [1.1, 1.6, 1.1]
+ns = np.multiply(scales, nsteps + 1).astype(int)
+xgrid, xpgrid, ygrid = [np.linspace(umin, umax, n) 
+                        for (umin, umax, n) in zip(mins, maxs, ns)]
+
+YP = np.zeros((len(ygrid), len(y3grid)))
+for k, y in enumerate(ygrid):
+    YP[k] = 1e3 * ecalc.calculate_yp(1e-3 * y, 1e-3 * y3grid, Mscreen)
+ypgrid = np.linspace(np.min(YP), np.max(YP), int(1.1 * len(y3grid)))
+
+W = np.zeros((len(xgrid), len(xpgrid), len(x3grid)))
+for i, x in enumerate(xgrid):
+    for j, xp in enumerate(xpgrid):
+        W[i, j] = ecalc.calculate_dE_screen(1e-3 * x3grid, dipole_current, 1e-3 * x, 1e-3 * xp, Mscreen)
+wgrid = np.linspace(np.min(W), np.max(W), int(1.1 * len(x3grid)))
+
+
+# ## Interpolate 
+
+# In[13]:
+
+
 iterations = data_sc['iteration']
 iteration_nums = np.unique(iterations)
 n_iterations = len(iteration_nums)
+kws = dict(kind='linear', copy=True, bounds_error=False, fill_value=0.0, assume_sorted=False)
+
+
+# Interpolate y-y3-x3 image along y for each sweep.
+
+# In[16]:
+print('Interpolating y-y3-x3 images along y.')
+
+images = data_im[cam + '_Image'].reshape((len(data_im), len(y3grid), len(x3grid)))
+images_yy3x3 = []
+for iteration in tqdm(iteration_nums):
+    idx, = np.where(iterations == iteration)
+    _points = points[idx, 2]
+    _values = images[idx, :, :]
+    _, uind = np.unique(_points, return_index=True)
+    fint = interpolate.interp1d(_points[uind], _values[uind], axis=0, **kws)
+    images_yy3x3.append(fint(ygrid))
+
+
+# Convert y3 to y'.
+
+# In[17]:
+print('Converting y3 --> yp.')
+
+images_yypx3 = []
+for image_yy3x3 in tqdm(images_yy3x3):
+    image_yypx3 = np.zeros((len(ygrid), len(ypgrid), len(x3grid)))
+    for k in range(len(ygrid)):
+        _points = YP[k]
+        _values = image_yy3x3[k, :, :]
+        fint = interpolate.interp1d(_points, _values, axis=0, **kws)
+        image_yypx3[k, :, :] = fint(ypgrid)
+    images_yypx3.append(image_yypx3)
+
+
+# Convert x3 to w.
+
+# In[18]:
+print('Converting x3 --> w.')
+
+XXP = []
+images_yypw = []
+for iteration, image_yypx3 in enumerate(tqdm(images_yypx3), start=1):
+    x, xp = np.mean(points[iterations == iteration, :2], axis=0)
+    _points = ecalc.calculate_dE_screen(1e-3 * x3grid, dipole_current, 1e-3 * x, 1e-3 * xp, Mscreen)
+    _values = image_yypx3
+    fint = interpolate.interp1d(_points, _values, axis=-1, **kws)
+    images_yypw.append(fint(wgrid))
+    XXP.append([x, xp])
+
+
+# Since we move in vertical lines in the x-xp plane, we can separate the x and xp interpolations. If we moved in diagonal lines in the x-xp plane, we would need to perform a 2D interpolation for each y, yp, w; we currently do not do this. 2D interpolation is in the older notebooks in this directory... should add as an option here.
+
+# In[19]:
+
 XXP = np.zeros((n_iterations, 2))
 for iteration in iteration_nums:
-    idx = iterations == iteration
-    x2, x1 = np.mean(points[idx, 1:], axis=0)
-    x = x1
-    xp = 1e3 * ecalc.calculate_xp(x1 * 1e-3, x2 * 1e-3, Mslit)
-    XXP[iteration - 1] = (x, xp)
-
-# Define the $x$-$x'$ interpolation grid. Tune `x_scale` and `xp_scale` 
-# to roughly align the grid points with the measured points.
-x_scale = 1.1
-xp_scale = 1.6
-x_min, xp_min = np.min(XXP, axis=0)
-x_max, xp_max = np.max(XXP, axis=0)
-xgrid = np.linspace(x_min, x_max, int(x_scale * (nsteps[2] + 1)))
-xpgrid = np.linspace(xp_min, xp_max, int(xp_scale * (nsteps[1] + 1)))
-
-
-fig, ax = pplt.subplots(figwidth=4)
-line_kws = dict(color='lightgray', lw=0.7)
-for x in xgrid:
-    g1 = ax.axvline(x, **line_kws)
-for xp in xpgrid:
-    ax.axhline(xp, **line_kws)
-ax.plot(XXP[:, 0], XXP[:, 1], color='pink7', lw=0, marker='.', ms=2)
-ax.format(xlabel='x [mm]', ylabel='xp [mrad]')
-plt.savefig('_output/xxp_interp_grid.png')
-
-
-### y' grid
-yp_scale = 1.1  # scales resolution of y' interpolation grid
-_Y, _Y3 = np.meshgrid(ygrid, y3grid, indexing='ij')
-_YP = 1e3 * ecalc.calculate_yp(_Y * 1e-3, _Y3 * 1e-3, Mscreen)  # [mrad]
-ypgrid = np.linspace(
-    np.min(_YP),
-    np.max(_YP), 
-    int(yp_scale * image_shape[0]),
-)
-
-fig, ax = pplt.subplots(figwidth=4)
-for yp in ypgrid:
-    ax.axhline(yp, **line_kws)
-ax.plot(_Y.ravel(), _YP.ravel(), color='pink7', lw=0, marker='.', ms=2)
-ax.format(xlabel='y [mm]', ylabel='yp [mrad]')
-plt.savefig('_output/yyp_interp_grid.png')
-
-### w grid
-w_scale = 1.1
-_W = np.zeros((len(xgrid), len(xpgrid), image_shape[1]))
-for i in range(_W.shape[0]):
-    for j in range(_W.shape[1]):
-        x = xgrid[i]
-        xp = xpgrid[j]
-        _W[i, j, :] = ecalc.calculate_dE_screen(x3grid * 1e-3, dipole_current, x * 1e-3, xp * 1e-3, Mscreen)
-wgrid = np.linspace(np.min(_W), np.max(_W), int(w_scale * image_shape[1]))
-
-
-## Interpolate
-
-# Interpolate the image stack along the $y$ axis on each iteration. 
-print('Interpolating y')
-images = data_im[cam + '_Image'].reshape((len(data_im), len(y3grid), len(x3grid)))
-images_3D = np.zeros((n_iterations, len(ygrid), len(y3grid), len(x3grid)))
-for count, iteration in enumerate(tqdm(iteration_nums)):
     idx, = np.where(iterations == iteration)
-    _points = points[idx, 0]
-    _values = images[idx, :, :]
-    _, uind = np.unique(_points, return_index=True)                     
-    fint = interpolate.interp1d(
-        _points[uind], 
-        _values[uind], 
-        axis=0,
-        kind='linear', 
-        bounds_error=False,
-        fill_value=0.0, 
-        assume_sorted=False,
-    )
-    images_3D[count] = fint(ygrid) 
-
-# Interpolate $x$-$x'$ for each $\left\{y, y_3, x_3\right\}$.
-print('Interpolating x-xp')
-XXP_new = utils.get_grid_coords(xgrid, xpgrid, indexing='ij')
-shape = (len(xgrid), len(xpgrid), len(ygrid), len(y3grid), len(x3grid))
-f = np.zeros(shape)
-for k in trange(shape[2]):
-    for l in trange(shape[3]):
-        for m in range(shape[4]):
-            new_values = interpolate.griddata(
-                XXP, 
-                images_3D[:, k, l, m],
-                XXP_new,
-                method='linear',
-                fill_value=False,
-            )
-            f[:, :, k, l, m] = new_values.reshape((shape[0], shape[1]))
-
-# The $y$ coordinate is already on a grid. For each $\left\{x, x', y, x_3\right\}$,
-# transform $y_3 \rightarrow y'$ and interpolate onto `ypgrid`. 
-print('Interpolating yp')
-shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(x3grid))
-f_new = np.zeros(shape)
-for i in trange(shape[0]):
-    for j in trange(shape[1]):
-        for k in range(shape[2]):
-            for m in range(shape[4]): 
-                y = ygrid[k]
-                yp = 1e3 * ecalc.calculate_yp(y * 1e-3, y3grid * 1e-3, Mscreen)
-                fint = interpolate.interp1d(
-                    yp,
-                    f[i, j, k, :, m], 
-                    kind='linear', 
-                    fill_value=0.0, 
-                    bounds_error=False,
-                    assume_sorted=False,
-                )
-                f_new[i, j, k, :, m] = fint(ypgrid)
-f = f_new.copy()
+    XXP[iteration - 1] = np.mean(points[idx, :2], axis=0)
+    
+fig, ax = pplt.subplots(figwidth=4)
+ax.scatter(XXP[:, 0], XXP[:, 1], c=np.arange(1, n_iterations + 1), s=2, cmap='flare_r',
+           colorbar=True, colorbar_kw=dict(label='iteration'))
+ax.format(xlabel="x [mm]", ylabel="xp [mrad]")
+plt.savefig('_output/x-xp_iterations.png')
+plt.show()
 
 
-# Interpolate energy spread $w$ for each $\left\{x, x', y, y'\right\}$.
-print('Interpolating w')
+# We need to group the iterations by x step. To do this, loop through each iteration and check if x has changed by a significant amount (within the same x step, x will only change by very small amounts due to noise in the readback). Find a good number for this.
+
+# In[21]:
+
+
+max_abs_delta = 0.075
+deltas = np.diff(points[:, 0])
+fig, ax = pplt.subplots()
+ax.hist(np.abs(deltas), bins=50, color='black')
+ax.axvline(max_abs_delta, color='red')
+ax.format(yscale='log', xlabel='delta_x [mm]')
+plt.show()
+
+
+# Group the iterations.
+
+# In[22]:
+
+
+X = []
+steps = []
+x_last = np.inf
+for iteration in trange(1, n_iterations + 1):
+    x, xp = XXP[iteration - 1]
+    if np.abs(x - x_last) > max_abs_delta:
+        X.append(x)
+        steps.append([])
+    steps[-1].append(iteration)
+    x_last = x
+
+
+# In[23]:
+
+
+fig, ax = pplt.subplots()
+for _iterations, x in zip(steps, X):
+    ax.plot(_iterations, len(_iterations) * [x])
+ax.format(xlabel='Iteration', ylabel='x [mm]')
+plt.savefig('_output/x_groups.png')
+
+
+# Interpolate each xp-y-yp-w image along xp.
+
+# In[ ]:
+print('Interpolating xp-y-yp-w images along xp.')
+
+images_yypw = np.array(images_yypw)
+images_xpyypw = []
+for _iterations in tqdm(steps):
+    idx = np.array(_iterations) - 1
+    _points = XXP[idx, 1]
+    _values = images_yypw[idx]
+    fint = interpolate.interp1d(_points, _values, axis=0, **kws)
+    images_xpyypw.append(fint(xpgrid))
+
+
+# Interpolate the x-xp-y-yp-w image along x.
+
+# In[ ]:
+print('Interpolating x-xp-y-yp-w image long x')
+
+# Create memory map
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
-savefilename = f'_output/f_{filename}.mmp'
-f_new = np.memmap(savefilename, shape=shape, dtype='float', mode='w+') 
-for i in trange(shape[0]):
-    for j in trange(shape[1]):
-        for k in range(shape[2]):
-            for l in range(shape[3]):
-                x = xgrid[i]
-                xp = xpgrid[j]
-                w = ecalc.calculate_dE_screen(x3grid * 1e-3, 0.0, x * 1e-3, xp * 1e-3, Mscreen)
-                fint = interpolate.interp1d(
-                    w,
-                    f[i, j, k, l, :],
-                    kind='linear',
-                    fill_value=0.0, 
-                    bounds_error=False,
-                    assume_sorted=False,
-                )
-                f_new[i, j, k, l, :] = fint(wgrid)
+f = np.memmap(f'_output/f_{filename}.mmp', dtype='float', mode='w+', shape=shape)
 
-# Hack: flip x-x'
+# Interpolate 5D image along x.
+_points = X
+_values = images_xpyypw
+fint = interpolate.interp1d(_points, _values, axis=0, **kws)
+f[:, :, :, :, :] = fint(xgrid)
+
+# Hack: flip x and x'.
 if cam.lower() == 'cam34':
-    f_new = f_new[::-1, ::-1, ...]
+    f[:, :, :, :, :] = f[::-1, ::-1, :, :, :]
 
-# Save grid coordinates.
+# Write changes to the memory map. 
+f.flush()
+
+
+# In[ ]:
+
+
 coords = [xgrid, xpgrid, ygrid, ypgrid, wgrid]
-for i in range(5):
-    coords[i] = coords[i] - np.mean(coords[i])
+coords = [c.copy() - np.mean(c) for c in coords]
 utils.save_stacked_array(f'_output/coords_{filename}.npz', coords)
 
-# Save info
-info['int_shape'] = shape
 
-print('info:')
-pprint(info)
+# Examine the array (Step 2 notebook makes more plots).
+
+# In[ ]:
+
+
+dims = ['x', 'xp', 'y', 'yp', 'w']
+units = ['mm', 'mrad', 'mm', 'mrad', 'MeV']
+dims_units = [f'{dim} [{unit}]' for dim, unit in zip(dims, units)]
+prof_kws = dict(kind='step')
+mplt.interactive_proj2d(f, coords=coords, dims=dims, units=units, prof_kws=prof_kws)
+
+
+# In[ ]:
+
+
+axes = mplt.corner(
+    f,
+    coords=coords,
+    labels=dims_units,
+    diag_kind='None',
+    prof='edges',
+    prof_kws=prof_kws,
+)
+
+
+# Save info.
+
+# In[ ]:
+
+
+info['dims'] = dims
+info['units'] = units
+info['int_shape'] = shape
 
 # Save as pickled dictionary for loading.
 utils.save_pickle('_output/info.pkl', info)
@@ -308,5 +433,9 @@ file = open('_output/info.txt', 'w')
 for key, value in info.items():
     file.write(f'{key}: {value}\n')
 file.close()
+
+print('info:')
+print(info)
+
 
 print('Done.')
