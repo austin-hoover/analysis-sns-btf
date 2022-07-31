@@ -525,7 +525,6 @@ def interactive_proj1d(
     dims=None,
     units=None,
     kind='bar',
-    level=None,
     **plot_kws,
 ):
     """Interactive plot of 1D projection of distribution `f`.
@@ -549,6 +548,8 @@ def interactive_proj1d(
         Dimension units.
     kind : {'bar', 'line'}
         The kind of plot to draw.
+    **plot_kws
+        Key word arguments passed to 1D plotting function.
         
     Returns
     -------
@@ -698,7 +699,14 @@ def interactive_proj1d(
 
         fig, ax = pplt.subplots(figsize=(4.5, 1.5))
         ax.format(xlabel=dims_units[axis_view])
-        ax.bar(coords[axis_view], p / np.sum(p), **plot_kws)
+        x = coords[axis_view]
+        y = p / np.sum(p)
+        if kind == 'bar':
+            ax.bar(x, y, **plot_kws)
+        elif kind == 'line':
+            ax.plot(x, y, **plot_kws)
+        elif kind == 'step':
+            ax.plot(x, y, drawstyle='steps-mid', **plot_kws)
         plt.show()
         
     kws = dict()
