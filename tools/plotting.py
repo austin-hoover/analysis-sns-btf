@@ -56,6 +56,18 @@ def plot_profile(image, xcoords=None, ycoords=None, ax=None,
     return ax
 
 
+def prepare_for_log_norm(image, method='floor'):
+    if np.all(image > 0):
+        return image
+    if method == 'floor':
+        floor = 1e-12
+        if np.max(image) > 0:
+            floor = np.min(image[image > 0])
+        return image + floor
+    elif method == 'mask':
+        return np.ma.masked_less_equal(image, 0)
+
+
 def plot_image(
     image, 
     x=None, 
@@ -100,14 +112,8 @@ def plot_image(
     if frac_thresh is not None:
         floor = max(1e-12, frac_thresh * image_max)
         image[image < floor] = 0
-    if log and np.any(image <= 0):
-        if handle_log == 'floor':
-            floor = 1e-12
-            if image_max > 0:
-                floor = np.min(image[image > 0])
-            image = image + floor
-        elif handle_log == 'mask':
-            image = np.ma.masked_less_equal(image, 0)
+    if log:
+        image = prepare_for_log_norm(image, method=handle_log)
     mesh = ax.pcolormesh(x, y, image.T, **plot_kws)
     if contour:
         ax.contour(x, y, image.T, **contour_kws)
@@ -129,6 +135,7 @@ def corner(
     diag_kws=None, 
     prof=False,
     prof_kws=None,
+    cbar=False,
     return_fig=False,
     **plot_kws
 ):
@@ -168,6 +175,7 @@ def corner(
             prof=prof,
             prof_kws=prof_kws,
             return_fig=return_fig,
+            cbar=cbar,
             **plot_kws
         )
         return axes
@@ -197,9 +205,13 @@ def corner(
                 else:
                     profx = profy = prof
                 H = utils.project(image, (j, i))
-                plot_image(H, ax=ax, x=coords[j], y=coords[i],
-                           profx=profx, profy=profy, prof_kws=prof_kws, 
-                           frac_thresh=frac_thresh, **plot_kws)
+                plot_image(
+                    H, ax=ax, x=coords[j], y=coords[i],
+                    profx=profx, profy=profy, prof_kws=prof_kws, 
+                    frac_thresh=frac_thresh, 
+                    **plot_kws
+                )
+                
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
     for ax, label in zip(axes[1:, 0], labels[1:]):
@@ -226,6 +238,7 @@ def _corner_nodiag(
     prof=False,
     prof_kws=None,
     return_fig=False,
+    cbar=False,
     **plot_kws
 ):
     n = image.ndim
@@ -253,7 +266,7 @@ def _corner_nodiag(
             else:
                 profx = profy = prof
             H = utils.project(image, (j, i + 1))
-            
+            H = H / np.max(H)
             x = coords[j]
             y = coords[i + 1]
             if x.ndim > 1:
@@ -262,7 +275,14 @@ def _corner_nodiag(
                 idx = utils.make_slice(x.ndim, axis, ind)
                 x = x[idx]
                 y = y[idx]
-                
+            #########
+            if cbar:
+                if i == 0 and j == 0:
+                    plot_kws['colorbar'] = 't'
+                    plot_kws['colorbar_kw'] = dict(width=0.065)
+                else:
+                    plot_kws['colorbar'] = False
+            ########
             plot_image(H, ax=ax, x=x, y=y,
                        profx=profx, profy=profy, prof_kws=prof_kws, 
                        frac_thresh=frac_thresh, **plot_kws)
