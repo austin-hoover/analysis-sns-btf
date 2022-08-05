@@ -23,7 +23,7 @@ class EnergyCalculate():
         self.E0 = kwargs.get('E0', 2.5)
         self.m0 = kwargs.get('m0', 939.3014)
         self.freq = kwargs.get('freq', 402.5e6)
-        self.rho_sign = kwargs.get('rho_sign', +1.0)
+        self.rho_sign = kwargs.get('rho_sign', + 1.0)
         
         # -- derived quantities
         self.speed_of_light = 2.99792458e+8
@@ -61,12 +61,12 @@ class EnergyCalculate():
         return quadM
     
     def getdrift(self,l):
-        drM = np.matrix([[1.,l, 0, 0, 0,0],
-                         [0.,1.,0, 0, 0,0],
-                         [0, 0, 1.,l, 0,0],
-                         [0, 0, 0, 1.,0,0],
-                         [0, 0, 0, 0, 1,0],
-                         [0, 0, 0, 0, 0,1]])
+        drM = np.matrix([[1., l, 0, 0, 0, 0],
+                         [0.,1., 0, 0, 0, 0],
+                         [0, 0, 1., l, 0, 0],
+                         [0, 0, 0, 1., 0, 0],
+                         [0, 0, 0, 0, 1., 0],
+                         [0, 0, 0, 0, 0, 1.]])
         return drM
     
     def getdipole(self, rho, theta):
@@ -80,7 +80,7 @@ class EnergyCalculate():
         ])
         return M
 
-    def getM1(self,GL05=0, GL06=0):
+    def getM1(self, GL05=0, GL06=0):
         """
         Get slit-slit matrix
         GL05 = 0. is integrated field of QH05 (positive=F)
@@ -88,11 +88,11 @@ class EnergyCalculate():
         """
         # quads
         Lq = 0.106 # quad length 
-        kappa5 = GL05/(Lq*self.brho)
-        kappa6 = -GL06/(Lq*self.brho)
+        kappa5 = GL05 / (Lq * self.brho)
+        kappa6 = -GL06 / (Lq * self.brho)
 
-        quad6 = self.getthinquad(kappa6,Lq)
-        quad5 = self.getthinquad(kappa5,Lq)
+        quad6 = self.getthinquad(kappa6, Lq)
+        quad5 = self.getthinquad(kappa5, Lq)
 
         ## drifts
         drl1 = self.getdrift(self.l1)
@@ -231,5 +231,4 @@ class EnergyCalculate():
         1D array: averaged data 
         """    
         dropind = np.array([])
-        
         return df.mean(axis=0), dropind
