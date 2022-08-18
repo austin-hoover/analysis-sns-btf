@@ -10,15 +10,16 @@ class EnergyCalculate():
     
     def __init__(self, **kwargs):
         """
-        l1 = 0.248 # slit1 to QH05 center
-        l2 = 0.210 # Qh05 center to QV06 center
-        l3 = 0.489 # QV06 center to slit2
-        L2 = 0.567 # slit2 to dipole face
-        l = 0.129 # dipole face to VS06 screen
+        l1 = 0.248  # slit1 to QH05 center
+        l2 = 0.210  # Qh05 center to QV06 center
+        l3 = 0.489  # QV06 center to slit2
+        L2 = 0.567  # slit2 to dipole face
+        l = 0.129  # dipole face to VS06 screen
         amp2meter=1.007*1e-3 -- relation of x_vs06 to delta-I
         C = 0.737 is saturation correction to dipole field (this is a measured quantity)
-        rho_sign = sign of bending radius (positive bends toward negative x, which is
-        true at VS06; negative bends toward positive x, which is true at VS34)
+        rho_sign: float
+            Sign of bending radius. (Positive bends toward negative x, which is true 
+            at VS06; negative bends toward positive x, which is true at VS34.)
         """
         self.E0 = kwargs.get('E0', 2.5)
         self.m0 = kwargs.get('m0', 939.3014)
@@ -37,7 +38,7 @@ class EnergyCalculate():
         self.amp2meter = kwargs.get('amp2meter', 1.007 * 1e3)
         
         # -- geometry terms for matrix calculations
-        # For slits, I use location of HZ04,HZ06. VT04,VT06 shifted by ~.04 m
+        # For slits, I use location of HZ04, HZ06. VT04,VT06 shifted by ~0.04 m.
         self.l1 = kwargs.get('l1', 0.280)
         self.l2 = kwargs.get('l2', 0.210)
         self.l3 = kwargs.get('l3', 0.457)
@@ -51,22 +52,22 @@ class EnergyCalculate():
         # mm to deg conversion
         self.z2phase = 360.0 * self.freq / (self.beta * self.speed_of_light) * 1e-3 
  
-    def getthinquad(self,kappa,Lq):
-        quadM = np.matrix([[1,0,0,0,0,0],\
-                        [-kappa*Lq,1,0,0,0,0],\
-                        [0,0,1,0,0,0],\
-                        [0,0,kappa*Lq,1,0,0],\
-                        [0,0,0,0,1,0],\
-                        [0,0,0,0,0,1]])
+    def getthinquad(self, kappa, Lq):
+        quadM = np.matrix([[1, 0, 0, 0, 0, 0],
+                           [-kappa * Lq, 1, 0, 0, 0, 0],
+                           [0,0,1,0,0,0],
+                           [0, 0, kappa * Lq, 1, 0, 0],
+                           [0, 0, 0, 0, 1, 0],
+                           [0, 0, 0, 0, 0, 1]])
         return quadM
     
     def getdrift(self,l):
-        drM = np.matrix([[1.,l, 0, 0, 0,0],
-                         [0.,1.,0, 0, 0,0],
-                         [0, 0, 1.,l, 0,0],
-                         [0, 0, 0, 1.,0,0],
-                         [0, 0, 0, 0, 1,0],
-                         [0, 0, 0, 0, 0,1]])
+        drM = np.matrix([[1, l, 0, 0, 0, 0],
+                         [0, 1, 0, 0, 0, 0],
+                         [0, 0, 1, l, 0, 0],
+                         [0, 0, 0, 1, 0, 0],
+                         [0, 0, 0, 0, 1, 0],
+                         [0, 0, 0, 0, 0, 1]])
         return drM
     
     def getdipole(self, rho, theta):
@@ -80,39 +81,37 @@ class EnergyCalculate():
         ])
         return M
 
-    def getM1(self,GL05=0, GL06=0):
-        """
-        Get slit-slit matrix
-        GL05 = 0. is integrated field of QH05 (positive=F)
-        GL06 = 0. is integrated field of QV06 (positive=D)
+    def getM1(self, GL05=0, GL06=0):
+        """Get slit-slit matrix
+        
+        GL05 is integrated field of QH05 (positive=F)
+        GL06 is integrated field of QV06 (positive=D)
         """
         # quads
         Lq = 0.106 # quad length 
-        kappa5 = GL05/(Lq*self.brho)
-        kappa6 = -GL06/(Lq*self.brho)
+        kappa5 = +GL05 / (Lq * self.brho)
+        kappa6 = -GL06 / (Lq * self.brho)
 
-        quad6 = self.getthinquad(kappa6,Lq)
-        quad5 = self.getthinquad(kappa5,Lq)
+        quad5 = self.getthinquad(kappa5, Lq)
+        quad6 = self.getthinquad(kappa6, Lq)
 
-        ## drifts
+        # drifts
         drl1 = self.getdrift(self.l1)
         drl2 = self.getdrift(self.l2)
         drl3 = self.getdrift(self.l3)
 
-        # M1: Slit to slit
+        # M1: slit to slit
         M1 = drl3 * quad6 * drl2 * quad5 * drl1
         M1rev = drl1 * quad5 * drl2 * quad6 * drl3
         return M1
     
-    def getM2(self,rho=None):
-        """
-        Get 2ndslit-screen matrix
-        """
+    def getM2(self, rho=None):
+        """Get 2nd slit-screen matrix."""
         if not rho:
             rho = self.rho
-            theta = np.pi/2
+            theta = np.pi / 2.0
         else: 
-            theta = np.arccos(1-self.rho/rho)
+            theta = np.arccos(1.0 - self.rho / rho)
             
         # M2: 2nd slit to dipole face
         M2 = self.getdrift(self.L2)
@@ -126,7 +125,7 @@ class EnergyCalculate():
         M = Ml * Mrho * M2
         return M
     
-    def getM(self, GL05=0, GL06=0, rho=None):
+    def getM(self, GL05=0.0, GL06=0.0, rho=None):
         """
         Get matrix slit-to-screen (VT04 to VS06)
         GL05 = 0 is integrated field of QH05 (positive=F)
@@ -143,7 +142,7 @@ class EnergyCalculate():
         x1 is position of first slit (in meters)
         x2 is position of 2nd slit (meters)
         """
-        xp = (x2 - M[0,0] * x1) / M[0,1]
+        xp = (x2 - M[0, 0] * x1) / M[0, 1]
         return xp
     
     def calculate_yp(self, y1, y2, M):
@@ -198,7 +197,7 @@ class EnergyCalculate():
         return dE
     
     # -- phase conversion.    
-    def calculate_dphi(self,de,**kwargs):
+    def calculate_dphi(self, de, **kwargs):
         """ 
         L is distance between emittance plane at dipole entrance (L=1.545 for HZ04 location)
         l is distance dipole exit to bsm
@@ -231,5 +230,4 @@ class EnergyCalculate():
         1D array: averaged data 
         """    
         dropind = np.array([])
-        
         return df.mean(axis=0), dropind
