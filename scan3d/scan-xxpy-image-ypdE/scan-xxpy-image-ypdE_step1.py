@@ -9,7 +9,7 @@
 # * For each (x, xp, y, x3), interpolate yp. (f(x, x', y, y', x3))
 # * For each (x, xp, y, yp), inteprolate w. (f(x, x', y, y', w)).
 
-# In[1]:
+# In[ ]:
 
 
 import sys
@@ -17,6 +17,7 @@ import os
 from os.path import join
 import time
 from datetime import datetime
+import itertools
 import importlib
 import json
 from pprint import pprint
@@ -43,7 +44,7 @@ from tools import plotting as mplt
 from tools import utils
 
 
-# In[2]:
+# In[ ]:
 
 
 pplt.rc['grid'] = False
@@ -53,13 +54,13 @@ pplt.rc['cmap.sequential'] = 'viridis'
 
 # ## Setup
 
-# In[3]:
+# In[ ]:
 
 
-folder = '_output'
+folder = '_saved/2022-07-15-VS06/'
 
 
-# In[4]:
+# In[ ]:
 
 
 info = utils.load_pickle(join(folder, 'info.pkl'))
@@ -67,7 +68,34 @@ print('info')
 pprint(info)
 
 
-# In[5]:
+# In[ ]:
+
+
+# Save as pickled dictionary for loading.
+utils.save_pickle('_output/info.pkl', info)
+
+# Save as file for viewing.
+file = open('_output/info.txt', 'w')
+for key, value in info.items():
+    file.write(f'{key}: {value}\n')
+file.close()
+
+
+# ### TEMP: correct for bad pix2mm.**
+# 
+# Cam06 was replaced in April 2022, and we did not get a mm/pixel calibration. Apply correction factor estimated by K. Ruisard.
+
+# In[ ]:
+
+
+fac = 0.4006069802731412
+info['image_pix2mm_x'] *= fac
+info['image_pix2mm_y'] *= fac
+
+
+# End TEMP
+
+# In[ ]:
 
 
 datadir = info['datadir']
@@ -87,7 +115,7 @@ for data in [data_sc, data_wf, data_im]:
     print()
 
 
-# In[6]:
+# In[ ]:
 
 
 variables = info['variables']
@@ -97,7 +125,7 @@ nsteps = np.array([variables[key]['steps'] for key in keys])
 acts = info['acts']
 print(acts)
 points = np.vstack([data_sc[act] for act in acts]).T
-points = points[:, ::-1]  # x, x2, y
+points = points[:, ::-1]  # y, x2, x --> x, x2, y
 nsteps = nsteps[::-1]
 
 cam = info['cam']
@@ -108,15 +136,15 @@ if cam.lower() not in ['cam06', 'cam34']:
 
 # ## Convert to beam frame coordinates
 
-# In[7]:
+# In[ ]:
 
 
-## y slit is inserted from above, always opposite y beam.
+## y_slit is inserted from above, always opposite y_beam.
 points[:, 2] = -points[:, 2]
 
 ## Screen coordinates (x3, y3) are always opposite beam (x, y).
 image_shape = info['image_shape']
-x3grid = -np.arange(image_shape[1]) * info['image_pix2mm_x']
+x3grid = -np.arange(image_shape[1]) * info['image_pix2mm_x'] 
 y3grid = -np.arange(image_shape[0]) * info['image_pix2mm_y']
 
 # VT04/VT06 are same sign as x_beam; VT34a and VT34b are opposite.
@@ -128,7 +156,7 @@ if cam.lower() == 'cam34':
 
 # Build the transfer matrices between the slits and the screen. 
 
-# In[8]:
+# In[ ]:
 
 
 # Eventually switch to saving metadata dict as pickled file in Step 0, then loading here.
@@ -147,16 +175,17 @@ else:
             _metadata[key] = value
     metadata = _metadata
 pprint(metadata)
+_file.close()
 
 
-# In[9]:
+# In[ ]:
 
 
 dipole_current = 0.0  # deviation of dipole current from nominal
 l = 0.129  # dipole face to screen (assume same for first/last dipole-screen)
 if cam.lower() == 'cam06':
     GL05 = 0.0  # QH05 integrated field strength (1 [A] = 0.0778 [Tm])
-    GL06 = 0.0778  # QH06 integrated field strength (1 [A] = 0.0778 [Tm])
+    GL06 = 0.0  # QH06 integrated field strength (1 [A] = 0.0778 [Tm])
     l1 = 0.280  # slit1 to QH05 center
     l2 = 0.210  # QH05 center to QV06 center
     l3 = 0.457  # QV06 center to slit2
@@ -190,7 +219,7 @@ Mscreen = ecalc.getM(GL05=GL05, GL06=GL06)  # slit-screen
 
 # Convert to x'.
 
-# In[10]:
+# In[ ]:
 
 
 points[:, 1] = 1e3 * ecalc.calculate_xp(points[:, 0] * 1e-3, points[:, 1] * 1e-3, Mslit) 
@@ -198,7 +227,7 @@ points[:, 1] = 1e3 * ecalc.calculate_xp(points[:, 0] * 1e-3, points[:, 1] * 1e-3
 
 # Center points at zero.
 
-# In[11]:
+# In[ ]:
 
 
 points -= np.mean(points, axis=0)
@@ -206,15 +235,14 @@ points -= np.mean(points, axis=0)
 
 # Make grids.
 
-# In[12]:
+# In[ ]:
 
 
 mins = np.min(points, axis=0)
 maxs = np.max(points, axis=0)
 scales = [1.1, 1.6, 1.1]
 ns = np.multiply(scales, nsteps + 1).astype(int)
-xgrid, xpgrid, ygrid = [np.linspace(umin, umax, n) 
-                        for (umin, umax, n) in zip(mins, maxs, ns)]
+xgrid, xpgrid, ygrid = [np.linspace(umin, umax, n) for (umin, umax, n) in zip(mins, maxs, ns)]
 
 YP = np.zeros((len(ygrid), len(y3grid)))
 for k, y in enumerate(ygrid):
@@ -230,36 +258,35 @@ wgrid = np.linspace(np.min(W), np.max(W), int(1.1 * len(x3grid)))
 
 # ## Interpolate 
 
-# In[13]:
+# In[ ]:
 
 
-iterations = data_sc['iteration']
+iterations = data_sc['iteration'].copy()
 iteration_nums = np.unique(iterations)
 n_iterations = len(iteration_nums)
 kws = dict(kind='linear', copy=True, bounds_error=False, fill_value=0.0, assume_sorted=False)
 
 
-# Interpolate y-y3-x3 image along y for each sweep.
+# ### Interpolate y
 
-# In[16]:
-print('Interpolating y-y3-x3 images along y.')
+# In[ ]:
 
-images = data_im[cam + '_Image'].reshape((len(data_im), len(y3grid), len(x3grid)))
+print("Interpolating y.")
 images_yy3x3 = []
 for iteration in tqdm(iteration_nums):
     idx, = np.where(iterations == iteration)
     _points = points[idx, 2]
-    _values = images[idx, :, :]
+    _values = data_im[idx, cam + '_Image'].reshape((len(idx), len(y3grid), len(x3grid)))
     _, uind = np.unique(_points, return_index=True)
     fint = interpolate.interp1d(_points[uind], _values[uind], axis=0, **kws)
     images_yy3x3.append(fint(ygrid))
 
 
-# Convert y3 to y'.
+# ### Interpolate y'
 
-# In[17]:
-print('Converting y3 --> yp.')
+# In[ ]:
 
+print("Interpolating y'.")
 images_yypx3 = []
 for image_yy3x3 in tqdm(images_yy3x3):
     image_yypx3 = np.zeros((len(ygrid), len(ypgrid), len(x3grid)))
@@ -269,13 +296,16 @@ for image_yy3x3 in tqdm(images_yy3x3):
         fint = interpolate.interp1d(_points, _values, axis=0, **kws)
         image_yypx3[k, :, :] = fint(ypgrid)
     images_yypx3.append(image_yypx3)
+del(images_yy3x3)
 
 
-# Convert x3 to w.
+# ### Interpolate w
 
-# In[18]:
-print('Converting x3 --> w.')
+# Also save x,x' on each sweep.
 
+# In[ ]:
+
+print("Interpolating w.")
 XXP = []
 images_yypw = []
 for iteration, image_yypx3 in enumerate(tqdm(images_yypx3), start=1):
@@ -285,46 +315,39 @@ for iteration, image_yypx3 in enumerate(tqdm(images_yypx3), start=1):
     fint = interpolate.interp1d(_points, _values, axis=-1, **kws)
     images_yypw.append(fint(wgrid))
     XXP.append([x, xp])
+del(images_yypx3)
+XXP = np.array(XXP)
+images_yypw = np.array(images_yypw)
 
 
-# Since we move in vertical lines in the x-xp plane, we can separate the x and xp interpolations. If we moved in diagonal lines in the x-xp plane, we would need to perform a 2D interpolation for each y, yp, w; we currently do not do this. 2D interpolation is in the older notebooks in this directory... should add as an option here.
+# In[ ]:
 
-# In[19]:
 
-XXP = np.zeros((n_iterations, 2))
-for iteration in iteration_nums:
-    idx, = np.where(iterations == iteration)
-    XXP[iteration - 1] = np.mean(points[idx, :2], axis=0)
-    
 fig, ax = pplt.subplots(figwidth=4)
 ax.scatter(XXP[:, 0], XXP[:, 1], c=np.arange(1, n_iterations + 1), s=2, cmap='flare_r',
            colorbar=True, colorbar_kw=dict(label='iteration'))
 ax.format(xlabel="x [mm]", ylabel="xp [mrad]")
-plt.savefig('_output/x-xp_iterations.png')
+plt.savefig('_output/x-xp_iterations')
 plt.show()
 
 
-# We need to group the iterations by x step. To do this, loop through each iteration and check if x has changed by a significant amount (within the same x step, x will only change by very small amounts due to noise in the readback). Find a good number for this.
+# ### Interpolate x-x'
 
-# In[21]:
+# Since we move in vertical lines in the x-xp plane, we could separate the x and xp interpolations. If we moved in diagonal lines in the x-xp plane, we would need to perform a 2D interpolation for each y, yp, w. The following variables determines which method to use.
 
-
-max_abs_delta = 0.075
-deltas = np.diff(points[:, 0])
-fig, ax = pplt.subplots()
-ax.hist(np.abs(deltas), bins=50, color='black')
-ax.axvline(max_abs_delta, color='red')
-ax.format(yscale='log', xlabel='delta_x [mm]')
-plt.show()
+# In[ ]:
 
 
-# Group the iterations.
-
-# In[22]:
+xxp_interp = '2D'  # {'1D', '2D'}
 
 
-X = []
-steps = []
+# Try grouping iterations by x step by looping through each iteration and checking if x has changed significantly (within each x step, x should only change by a small amount due to noise in the readback). Find a good cutoff `max_abs_delta`.
+
+# In[ ]:
+
+
+max_abs_delta = 0.05
+X, steps = [], []
 x_last = np.inf
 for iteration in trange(1, n_iterations + 1):
     x, xp = XXP[iteration - 1]
@@ -334,54 +357,110 @@ for iteration in trange(1, n_iterations + 1):
     steps[-1].append(iteration)
     x_last = x
 
+fig, ax = pplt.subplots(figsize=(4, 2))
+ax.hist(np.abs(np.diff(points[:, 0])), bins=50, color='black')
+ax.axvline(max_abs_delta, color='red')
+ax.format(yscale='log', xlabel=r'$\Delta x$ [mm]', ylabel='Number of steps')
+plt.savefig('_output/delta_x')
+plt.show()
 
-# In[23]:
-
-
-fig, ax = pplt.subplots()
-for _iterations, x in zip(steps, X):
-    ax.plot(_iterations, len(_iterations) * [x])
-ax.format(xlabel='Iteration', ylabel='x [mm]')
-plt.savefig('_output/x_groups.png')
-
-
-# Interpolate each xp-y-yp-w image along xp.
-
-# In[ ]:
-print('Interpolating xp-y-yp-w images along xp.')
-
-images_yypw = np.array(images_yypw)
-images_xpyypw = []
-for _iterations in tqdm(steps):
-    idx = np.array(_iterations) - 1
-    _points = XXP[idx, 1]
-    _values = images_yypw[idx]
-    fint = interpolate.interp1d(_points, _values, axis=0, **kws)
-    images_xpyypw.append(fint(xpgrid))
+fig, ax = pplt.subplots(figsize=(4, 2))
+for _iterations in steps:
+    _idx = np.array(_iterations) - 1
+    ax.scatter(XXP[_idx][:, 0], XXP[_idx][:, 1], s=1)
+    ax.format(xlabel="x [mm]", ylabel="x' [mrad]")
+plt.savefig('_output/x_groups')
+plt.show()
 
 
-# Interpolate the x-xp-y-yp-w image along x.
+# Run the interpolation.
 
 # In[ ]:
-print('Interpolating x-xp-y-yp-w image long x')
 
-# Create memory map
 shape = (len(xgrid), len(xpgrid), len(ygrid), len(ypgrid), len(wgrid))
 f = np.memmap(f'_output/f_{filename}.mmp', dtype='float', mode='w+', shape=shape)
 
-# Interpolate 5D image along x.
-_points = X
-_values = images_xpyypw
-fint = interpolate.interp1d(_points, _values, axis=0, **kws)
-f[:, :, :, :, :] = fint(xgrid)
 
-# Hack: flip x and x'.
+# In[ ]:
+
+
+if xxp_interp == '1D':
+    # Interpolate x'-y-y'-w image along x'
+    print("Interpolating x'.")
+    images_xpyypw = []
+    for _iterations in tqdm(steps):
+        idx = np.array(_iterations) - 1
+        _points = XXP[idx, 1]
+        _values = images_yypw[idx]
+        fint = interpolate.interp1d(_points, _values, axis=0, **kws)
+        images_xpyypw.append(fint(xpgrid))
+    del(images_yypw)
+
+    # Interpolate the xp-y-yp-w image stack along x.
+    print("Interpolating x.")
+    ## Passing a very large array to `scipy.interpolate.interp1d` can give 
+    ## memory errors for large arrays. In that case, loop through {x', y, y', w}
+    ## and perform a 1D interpolation at each index. 
+    n_loop = 1
+    _points = X
+    if n_loop == 0:
+        _values = images_xpyypw
+        fint = interpolate.interp1d(_points, _values, axis=0, **kws)
+        f[:, j, k, l, m] = fint(xgrid)
+    else:
+        images_xpyypw = np.array(images_xpyypw)
+        axis = list(range(1, n_loop + 1))
+        ranges = [range(s) for s in shape[1: n_loop + 1]]
+        for ind in tqdm(itertools.product(*ranges)):
+            idx = utils.make_slice(5, axis=axis, ind=ind)
+            _values = images_xpyypw[idx]
+            fint = interpolate.interp1d(_points, _values, axis=0, **kws)
+            f[idx] = fint(xgrid) 
+        del(images_xpyypw)
+else:
+    # 2D interpolation of x-x' for each {y, y', w}.
+    print("Interpolating x-x'.")
+    _points = XXP
+    _new_points = utils.get_grid_coords(xgrid, xpgrid)
+    for k in trange(shape[2]):
+        for l in trange(shape[3]):
+            for m in range(shape[4]):
+                _values = images_yypw[:, k, l, m]
+                new_values = interpolate.griddata(
+                    _points,
+                    _values,
+                    _new_points,
+                    method='linear',
+                    fill_value=False,
+                )
+                f[:, :, k, l, m] = new_values.reshape((shape[0], shape[1]))
+
+
+# ## Shutdown
+
+# Hack: flip x-x' if we are at Cam34.
+
+# In[ ]:
+
+
 if cam.lower() == 'cam34':
-    f[:, :, :, :, :] = f[::-1, ::-1, :, :, :]
+    ## This may give a memory error...
+    f[:, :, :, :, :] = f[::-1, ::-1, :, :, :] 
+    
+    ## This should not...
+    # for k in trange(shape[2]):
+    #     f[:, :, k, :, :] = f[::-1, ::-1, k, :, :]
 
-# Write changes to the memory map. 
+
+# Write changes to the memory map.
+
+# In[ ]:
+
+
 f.flush()
 
+
+# Save the grid coordinates.
 
 # In[ ]:
 
@@ -391,29 +470,16 @@ coords = [c.copy() - np.mean(c) for c in coords]
 utils.save_stacked_array(f'_output/coords_{filename}.npz', coords)
 
 
-# Examine the array (Step 2 notebook makes more plots).
+# Briefly examine the interpolated array.
 
 # In[ ]:
 
 
-dims = ['x', 'xp', 'y', 'yp', 'w']
+dims = ["x", "x'", "y", "y'", "w"]
 units = ['mm', 'mrad', 'mm', 'mrad', 'MeV']
 dims_units = [f'{dim} [{unit}]' for dim, unit in zip(dims, units)]
 prof_kws = dict(kind='step')
 mplt.interactive_proj2d(f, coords=coords, dims=dims, units=units, prof_kws=prof_kws)
-
-
-# In[ ]:
-
-
-axes = mplt.corner(
-    f,
-    coords=coords,
-    labels=dims_units,
-    diag_kind='None',
-    prof='edges',
-    prof_kws=prof_kws,
-)
 
 
 # Save info.
@@ -434,8 +500,5 @@ for key, value in info.items():
     file.write(f'{key}: {value}\n')
 file.close()
 
-print('info:')
-print(info)
 
-
-print('Done.')
+file.close()
