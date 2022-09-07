@@ -167,11 +167,11 @@ def plot_image(
                 plot_kws["colorbar_kw"] = dict()
             plot_kws["colorbar_kw"]["formatter"] = "log"
         image = prep_image_for_log(image, handle_log)
-    if contour and contour_kws is None:
+    if contour_kws is None:
         contour_kws = dict()
-        contour_kws.setdefault("color", "white")
-        contour_kws.setdefault("lw", 1.0)
-        contour_kws.setdefault("alpha", 0.5)
+    contour_kws.setdefault("color", "white")
+    contour_kws.setdefault("lw", 1.0)
+    contour_kws.setdefault("alpha", 0.5)
     if prof_kws is None:
         prof_kws = dict()
     if x is None:
