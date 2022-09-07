@@ -105,6 +105,8 @@ def copy_into_new_dim(array, shape, axis=-1, method='broadcast', copy=False):
             new_shape = shape + array.shape
         elif axis == -1:
             new_shape = array.shape + shape
+        else:
+            raise ValueError('Cannot yet handle axis != 0, -1.')
         for _ in range(len(shape)):
             array = np.expand_dims(array, axis)
         if copy:
@@ -124,7 +126,10 @@ def make_slice(n, axis=0, ind=0):
     for k, i in zip(axis, ind):
         if i is None:
             continue
-        idx[k] = slice(i[0], i[1]) if type(i) in [tuple, list, np.ndarray] else i
+        elif type(i) is tuple and len(i) == 2:
+            idx[k] = slice(i[0], i[1])
+        else:
+            idx[k] = i
     return tuple(idx)
 
 
