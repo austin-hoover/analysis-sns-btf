@@ -14,6 +14,24 @@ import skimage
 from . import utils
 
 
+CMAPS = [
+    "viridis", 
+    "dusk_r", 
+    "plasma", 
+    "mono_r", 
+    "mono", 
+    "greys", 
+    "rocket",
+    "mako", 
+    "fire", 
+    "fire_r", 
+    "stellar", 
+    "stellar_r", 
+    "dusk", 
+    "blues",
+]
+
+
 def linear_fit(x, y):
     def fit(x, slope, intercept):
         return slope * x + intercept
@@ -216,8 +234,7 @@ def _setup_corner(n, diag, labels, limits=None, **fig_kws):
                 axes[i, j].axis("off")
     for ax, label in zip(axes[-1, :], labels):
         ax.format(xlabel=label)
-    start = 1 if diag else 0
-    for ax, label in zip(axes[start:, 0], labels[start:]):
+    for ax, label in zip(axes[(1 if diag else 0):, 0], labels[1:]):
         ax.format(ylabel=label)
     for i in range(nrows):
         axes[:-1, i].format(xticklabels=[])
@@ -488,7 +505,7 @@ def interactive_proj2d(
     prof_kws.setdefault("color", "white")
     prof_kws.setdefault("scale", 0.14)
     if cmaps is None:
-        cmaps = ["viridis", "dusk_r", "mono_r", "plasma"]
+        cmaps = CMAPS
     plot_kws.setdefault("colorbar", True)
     plot_kws["prof_kws"] = prof_kws
     plot_kws["handle_log"] = handle_log
