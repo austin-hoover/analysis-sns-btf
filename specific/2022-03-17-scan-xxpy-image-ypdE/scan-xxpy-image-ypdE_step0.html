@@ -14810,6 +14810,18 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 
 </div>
 
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p>Make dictionary of metadata.</p>
+
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -14819,25 +14831,23 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">if</span> <span class="s1">&#39;config&#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">]</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;config&#39;, </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;, </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">name</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="c1"># Make dictionary of metadata</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-        <span class="n">metadata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">][</span><span class="s1">&#39;metadata&#39;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="c1"># Older measurement; metadata is in json file.</span>
+    <span class="c1"># Older measurements use json.</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">datadir</span><span class="p">,</span> <span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;-metadata.json&#39;</span><span class="p">),</span> <span class="s1">&#39;r&#39;</span><span class="p">))</span>
     <span class="n">_metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">_dict</span> <span class="ow">in</span> <span class="n">metadata</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">_metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="n">_metadata</span>
-    <span class="n">pprint</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
+
+<span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># for future notebooks</span>
+<span class="n">info</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metadata</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;metadata:&#39;</span><span class="p">)</span>
+<span class="n">pprint</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
 </pre></div>
 
      </div>
@@ -14859,65 +14869,58 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>&#39;config&#39;, &lt;class &#39;h5py._hl.group.Group&#39;&gt;
-  &#39;environment&#39;, &lt;class &#39;h5py._hl.dataset.Dataset&#39;&gt;
-    timestamp: [1.64753814e+09]
-    user: [b&#39;k0r&#39;]
-    host: [b&#39;btf-diag-app1.ics.sns.gov&#39;]
-    cmd_line: [b&#39;scan3d/scan-xxpy-image-ypdE.py&#39;]
-    work_dir: [b&#39;/home/k0r/scanengine-scripts&#39;]
-  &#39;metadata&#39;, &lt;class &#39;h5py._hl.dataset.Dataset&#39;&gt;
-    timestamp: [1.64753815e+09]
-    Test_LLRF:FCM_RFQ1:CtlAmpSet: [0.655]
-    RFTF_TM:Gate_BeamOn:RR: [5.]
-    BTF_MEBT_Mag:PS_QH01:I_Set: [157.94000244]
-    BTF_MEBT_Mag:PS_QV02:I_Set: [280.05999756]
-    BTF_MEBT_Mag:PS_QH03:I_Set: [6.75]
-    BTF_MEBT_Mag:PS_QV04:I_Set: [-3.8]
-    BTF_MEBT_Mag:PS_QH05:I_Set: [0.]
-    BTF_MEBT_Mag:PS_QV06:I_Set: [0.]
-    BTF_MEBT_Mag:PS_QV07:I_Set: [-3.05]
-    BTF_MEBT_Mag:PS_QH08:I_Set: [3.521]
-    BTF_MEBT_Mag:PS_QV09:I_Set: [-1.54999995]
-    BTF_MEBT_Mag:PS_QV10:I_Set: [-2.0999999]
-    BTF_MEBT_Mag:PS_QH11:I_Set: [7.53900003]
-    BTF_MEBT_Mag:PS_QV12:I_Set: [-7.4000001]
-    BTF_MEBT_Mag:PS_QH13:I_Set: [6.3499999]
-    BTF_MEBT_Mag:PS_QH33:I_Set: [5.98999977]
-    BTF_MEBT_Mag:PS_QV34:I_Set: [-7.5999999]
-    BTF_MEBT_Mag:PS_DCH01:I_Set: [6.]
-    BTF_MEBT_Mag:PS_DCV01:I_Set: [2.]
-    BTF_MEBT_Mag:PS_DCH02:I_Set: [2.]
-    BTF_MEBT_Mag:PS_DCV02:I_Set: [0.]
-    BTF_MEBT_Mag:PS_DH07:I_Set: [359.]
-    ITSF_Diag:Slit_VT04:DestinationSet: [6.85483871]
-    ITSF_Diag:Slit_VT06:DestinationSet: [12.17439516]
-    ITSF_Diag:Slit_HZ04:DestinationSet: [27.]
-    ITSF_Diag:Slit_HZ06:DestinationSet: [17.]
-    ITSF_Diag:VS06:DestinationSet: [0.]
-    ITSF_Diag:Atten02:DestinationSet: [-40.]
-    ITSF_Diag:FC12:DestinationSet: [28.75]
-    ITSF_Diag:Act_BPM04:DestinationSet: [0.]
-    ITSF_Diag:Slit_HZ34a:DestinationSet: [16.]
-    ITSF_Diag:Slit_HZ34b:DestinationSet: [12.31579292]
-    ITSF_Diag:Slit_VT34a:DestinationSet: [27.]
-    ITSF_Diag:Slit_VT34b:DestinationSet: [22.9]
-    ITSF_Diag:VS14:DestinationSet: [0.]
-    ITSF_Diag:VS22:DestinationSet: [0.]
-    ITSF_Diag:VS30:DestinationSet: [0.]
-    ITSF_Diag:Cam06:Brightness: [200.]
-    ITSF_Diag:Cam06:Threshold: [0.]
-    ITSF_Diag:Cam06:Exp: [350]
-    ITSF_Diag:Cam06:Gain: [0]
-    ITSF_Diag:Cam06:Magn: [3]
-    ITSF_Diag:Cam06:Yc: [7.5]
-    ITSF_Diag:Cam06:Xc: [4.]
-    ITSF_Diag:Cam06:Saturation: [0.00610501]
-    ITSF_Diag:Cam06:ROIy: [0.]
-    ITSF_Diag:Cam06:ROIx: [0.]
-    ITSF_Diag:Cam06:ROIh: [220.]
-    ITSF_Diag:Cam06:ROIw: [280.]
-    ITSF_Diag:VS06:PositionSync: [-0.00851286]
+<pre>metadata:
+{&#39;BTF_MEBT_Mag:PS_DCH01:I_Set&#39;: array([6.]),
+ &#39;BTF_MEBT_Mag:PS_DCH02:I_Set&#39;: array([2.]),
+ &#39;BTF_MEBT_Mag:PS_DCV01:I_Set&#39;: array([2.]),
+ &#39;BTF_MEBT_Mag:PS_DCV02:I_Set&#39;: array([0.]),
+ &#39;BTF_MEBT_Mag:PS_DH07:I_Set&#39;: array([359.]),
+ &#39;BTF_MEBT_Mag:PS_QH01:I_Set&#39;: array([157.94000244]),
+ &#39;BTF_MEBT_Mag:PS_QH03:I_Set&#39;: array([6.75]),
+ &#39;BTF_MEBT_Mag:PS_QH05:I_Set&#39;: array([0.]),
+ &#39;BTF_MEBT_Mag:PS_QH08:I_Set&#39;: array([3.521]),
+ &#39;BTF_MEBT_Mag:PS_QH11:I_Set&#39;: array([7.53900003]),
+ &#39;BTF_MEBT_Mag:PS_QH13:I_Set&#39;: array([6.3499999]),
+ &#39;BTF_MEBT_Mag:PS_QH33:I_Set&#39;: array([5.98999977]),
+ &#39;BTF_MEBT_Mag:PS_QV02:I_Set&#39;: array([280.05999756]),
+ &#39;BTF_MEBT_Mag:PS_QV04:I_Set&#39;: array([-3.8]),
+ &#39;BTF_MEBT_Mag:PS_QV06:I_Set&#39;: array([0.]),
+ &#39;BTF_MEBT_Mag:PS_QV07:I_Set&#39;: array([-3.05]),
+ &#39;BTF_MEBT_Mag:PS_QV09:I_Set&#39;: array([-1.54999995]),
+ &#39;BTF_MEBT_Mag:PS_QV10:I_Set&#39;: array([-2.0999999]),
+ &#39;BTF_MEBT_Mag:PS_QV12:I_Set&#39;: array([-7.4000001]),
+ &#39;BTF_MEBT_Mag:PS_QV34:I_Set&#39;: array([-7.5999999]),
+ &#39;ITSF_Diag:Act_BPM04:DestinationSet&#39;: array([0.]),
+ &#39;ITSF_Diag:Atten02:DestinationSet&#39;: array([-40.]),
+ &#39;ITSF_Diag:Cam06:Brightness&#39;: array([200.]),
+ &#39;ITSF_Diag:Cam06:Exp&#39;: array([350], dtype=int32),
+ &#39;ITSF_Diag:Cam06:Gain&#39;: array([0], dtype=int32),
+ &#39;ITSF_Diag:Cam06:Magn&#39;: array([3], dtype=int32),
+ &#39;ITSF_Diag:Cam06:ROIh&#39;: array([220.]),
+ &#39;ITSF_Diag:Cam06:ROIw&#39;: array([280.]),
+ &#39;ITSF_Diag:Cam06:ROIx&#39;: array([0.]),
+ &#39;ITSF_Diag:Cam06:ROIy&#39;: array([0.]),
+ &#39;ITSF_Diag:Cam06:Saturation&#39;: array([0.00610501]),
+ &#39;ITSF_Diag:Cam06:Threshold&#39;: array([0.]),
+ &#39;ITSF_Diag:Cam06:Xc&#39;: array([4.]),
+ &#39;ITSF_Diag:Cam06:Yc&#39;: array([7.5]),
+ &#39;ITSF_Diag:FC12:DestinationSet&#39;: array([28.75]),
+ &#39;ITSF_Diag:Slit_HZ04:DestinationSet&#39;: array([27.]),
+ &#39;ITSF_Diag:Slit_HZ06:DestinationSet&#39;: array([17.]),
+ &#39;ITSF_Diag:Slit_HZ34a:DestinationSet&#39;: array([16.]),
+ &#39;ITSF_Diag:Slit_HZ34b:DestinationSet&#39;: array([12.31579292]),
+ &#39;ITSF_Diag:Slit_VT04:DestinationSet&#39;: array([6.85483871]),
+ &#39;ITSF_Diag:Slit_VT06:DestinationSet&#39;: array([12.17439516]),
+ &#39;ITSF_Diag:Slit_VT34a:DestinationSet&#39;: array([27.]),
+ &#39;ITSF_Diag:Slit_VT34b:DestinationSet&#39;: array([22.9]),
+ &#39;ITSF_Diag:VS06:DestinationSet&#39;: array([0.]),
+ &#39;ITSF_Diag:VS06:PositionSync&#39;: array([-0.00851286]),
+ &#39;ITSF_Diag:VS14:DestinationSet&#39;: array([0.]),
+ &#39;ITSF_Diag:VS22:DestinationSet&#39;: array([0.]),
+ &#39;ITSF_Diag:VS30:DestinationSet&#39;: array([0.]),
+ &#39;RFTF_TM:Gate_BeamOn:RR&#39;: array([5.]),
+ &#39;Test_LLRF:FCM_RFQ1:CtlAmpSet&#39;: array([0.655]),
+ &#39;timestamp&#39;: array([1.64753815e+09])}
 </pre>
 </div>
 </div>
@@ -15061,8 +15064,7 @@ nbytes = 2.248e+10
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[10]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># to pass info between notebooks</span>
-<span class="n">info</span><span class="p">[</span><span class="s1">&#39;acts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">acts</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;acts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">acts</span>
 <span class="n">info</span><span class="p">[</span><span class="s1">&#39;datadir&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datadir</span>
 <span class="n">info</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
 </pre></div>
@@ -16898,6 +16900,7 @@ class="
                     <span class="n">profx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">profy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
     
+    
 <span class="n">interactive</span><span class="p">(</span>
     <span class="n">update</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="p">(</span><span class="n">imax</span> <span class="o">-</span> <span class="mi">99</span><span class="p">,</span> <span class="n">imax</span> <span class="o">+</span> <span class="mi">101</span><span class="p">),</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
     <span class="n">downscale</span><span class="o">=</span><span class="n">widgets</span><span class="o">.</span><span class="n">IntSlider</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
@@ -17268,8 +17271,8 @@ new pix2mm_x = 0.0659
     <span class="n">im</span> <span class="o">=</span> <span class="n">ip</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="o">**</span><span class="n">crop_edges</span><span class="p">)</span>
     <span class="n">im</span> <span class="o">=</span> <span class="n">im</span> <span class="o">-</span> <span class="n">offset</span>
     <span class="n">im</span><span class="p">[</span><span class="n">im</span> <span class="o">&lt;=</span> <span class="n">thresh</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">downscale</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">downscale</span><span class="p">)</span>
-    <span class="n">im</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">downscale_local_mean</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="p">(</span><span class="n">downscale</span><span class="p">,</span> <span class="n">downscale</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">downscale</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">im</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">downscale_local_mean</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="p">(</span><span class="n">downscale</span><span class="p">,</span> <span class="n">downscale</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">im</span>
 </pre></div>
 
@@ -17301,10 +17304,10 @@ new pix2mm_x = 0.0659
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;info:&#39;</span><span class="p">)</span>
 <span class="n">pprint</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
 
-<span class="c1"># Save as pickled dictionary for easy loading.</span>
+<span class="c1"># Save as pickled dictionary for loading.</span>
 <span class="n">utils</span><span class="o">.</span><span class="n">save_pickle</span><span class="p">(</span><span class="s1">&#39;_output/info.pkl&#39;</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span>
 
-<span class="c1"># Also save as file for viewing.</span>
+<span class="c1"># Also save as text file for viewing.</span>
 <span class="n">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;_output/info.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
     <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -17349,6 +17352,57 @@ new pix2mm_x = 0.0659
  &#39;image_pix2mm_y&#39;: 0.0659,
  &#39;image_shape&#39;: (217, 255),
  &#39;image_thresh&#39;: 2720,
+ &#39;metadata&#39;: {&#39;BTF_MEBT_Mag:PS_DCH01:I_Set&#39;: array([6.]),
+              &#39;BTF_MEBT_Mag:PS_DCH02:I_Set&#39;: array([2.]),
+              &#39;BTF_MEBT_Mag:PS_DCV01:I_Set&#39;: array([2.]),
+              &#39;BTF_MEBT_Mag:PS_DCV02:I_Set&#39;: array([0.]),
+              &#39;BTF_MEBT_Mag:PS_DH07:I_Set&#39;: array([359.]),
+              &#39;BTF_MEBT_Mag:PS_QH01:I_Set&#39;: array([157.94000244]),
+              &#39;BTF_MEBT_Mag:PS_QH03:I_Set&#39;: array([6.75]),
+              &#39;BTF_MEBT_Mag:PS_QH05:I_Set&#39;: array([0.]),
+              &#39;BTF_MEBT_Mag:PS_QH08:I_Set&#39;: array([3.521]),
+              &#39;BTF_MEBT_Mag:PS_QH11:I_Set&#39;: array([7.53900003]),
+              &#39;BTF_MEBT_Mag:PS_QH13:I_Set&#39;: array([6.3499999]),
+              &#39;BTF_MEBT_Mag:PS_QH33:I_Set&#39;: array([5.98999977]),
+              &#39;BTF_MEBT_Mag:PS_QV02:I_Set&#39;: array([280.05999756]),
+              &#39;BTF_MEBT_Mag:PS_QV04:I_Set&#39;: array([-3.8]),
+              &#39;BTF_MEBT_Mag:PS_QV06:I_Set&#39;: array([0.]),
+              &#39;BTF_MEBT_Mag:PS_QV07:I_Set&#39;: array([-3.05]),
+              &#39;BTF_MEBT_Mag:PS_QV09:I_Set&#39;: array([-1.54999995]),
+              &#39;BTF_MEBT_Mag:PS_QV10:I_Set&#39;: array([-2.0999999]),
+              &#39;BTF_MEBT_Mag:PS_QV12:I_Set&#39;: array([-7.4000001]),
+              &#39;BTF_MEBT_Mag:PS_QV34:I_Set&#39;: array([-7.5999999]),
+              &#39;ITSF_Diag:Act_BPM04:DestinationSet&#39;: array([0.]),
+              &#39;ITSF_Diag:Atten02:DestinationSet&#39;: array([-40.]),
+              &#39;ITSF_Diag:Cam06:Brightness&#39;: array([200.]),
+              &#39;ITSF_Diag:Cam06:Exp&#39;: array([350], dtype=int32),
+              &#39;ITSF_Diag:Cam06:Gain&#39;: array([0], dtype=int32),
+              &#39;ITSF_Diag:Cam06:Magn&#39;: array([3], dtype=int32),
+              &#39;ITSF_Diag:Cam06:ROIh&#39;: array([220.]),
+              &#39;ITSF_Diag:Cam06:ROIw&#39;: array([280.]),
+              &#39;ITSF_Diag:Cam06:ROIx&#39;: array([0.]),
+              &#39;ITSF_Diag:Cam06:ROIy&#39;: array([0.]),
+              &#39;ITSF_Diag:Cam06:Saturation&#39;: array([0.00610501]),
+              &#39;ITSF_Diag:Cam06:Threshold&#39;: array([0.]),
+              &#39;ITSF_Diag:Cam06:Xc&#39;: array([4.]),
+              &#39;ITSF_Diag:Cam06:Yc&#39;: array([7.5]),
+              &#39;ITSF_Diag:FC12:DestinationSet&#39;: array([28.75]),
+              &#39;ITSF_Diag:Slit_HZ04:DestinationSet&#39;: array([27.]),
+              &#39;ITSF_Diag:Slit_HZ06:DestinationSet&#39;: array([17.]),
+              &#39;ITSF_Diag:Slit_HZ34a:DestinationSet&#39;: array([16.]),
+              &#39;ITSF_Diag:Slit_HZ34b:DestinationSet&#39;: array([12.31579292]),
+              &#39;ITSF_Diag:Slit_VT04:DestinationSet&#39;: array([6.85483871]),
+              &#39;ITSF_Diag:Slit_VT06:DestinationSet&#39;: array([12.17439516]),
+              &#39;ITSF_Diag:Slit_VT34a:DestinationSet&#39;: array([27.]),
+              &#39;ITSF_Diag:Slit_VT34b:DestinationSet&#39;: array([22.9]),
+              &#39;ITSF_Diag:VS06:DestinationSet&#39;: array([0.]),
+              &#39;ITSF_Diag:VS06:PositionSync&#39;: array([-0.00851286]),
+              &#39;ITSF_Diag:VS14:DestinationSet&#39;: array([0.]),
+              &#39;ITSF_Diag:VS22:DestinationSet&#39;: array([0.]),
+              &#39;ITSF_Diag:VS30:DestinationSet&#39;: array([0.]),
+              &#39;RFTF_TM:Gate_BeamOn:RR&#39;: array([5.]),
+              &#39;Test_LLRF:FCM_RFQ1:CtlAmpSet&#39;: array([0.655]),
+              &#39;timestamp&#39;: array([1.64753815e+09])},
  &#39;ndim&#39;: 3,
  &#39;noise_icenter&#39;: 58921,
  &#39;signal_thresh&#39;: 0.002,
@@ -17542,47 +17596,6 @@ Will skip point 60642 due to bcm current 0.01 &lt; 5.00
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[52]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-     <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">join</span><span class="p">(</span><span class="n">datadir</span><span class="p">,</span> <span class="s1">&#39;preproc-&#39;</span> <span class="o">+</span> <span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;.h5&#39;</span><span class="p">)</span>
-</pre></div>
-
-     </div>
-</div>
-</div>
-</div>
-
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[52]:</div>
-
-
-
-
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain">
-<pre>&#39;/home/share/Measurements/scan-xxpy-image-ypdE/2022-03-17/preproc-220317132859-scan-xxpy-image-ypdE.h5&#39;</pre>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell-inputWrapper">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
@@ -17597,8 +17610,7 @@ Will skip point 60642 due to bcm current 0.01 &lt; 5.00
         <span class="n">data_wf</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">attr</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">im_attrs</span><span class="p">:</span>
         <span class="n">image</span> <span class="o">=</span> <span class="n">get_image</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="n">process_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image_crop_edges</span><span class="p">,</span> <span class="n">image_offset</span><span class="p">,</span> 
-                              <span class="n">image_thresh</span><span class="p">,</span> <span class="n">image_downscale</span><span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">process_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image_crop_edges</span><span class="p">,</span> <span class="n">image_offset</span><span class="p">,</span> <span class="n">image_thresh</span><span class="p">,</span> <span class="n">image_downscale</span><span class="p">)</span>
         <span class="n">data_im</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
 <span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
