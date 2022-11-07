@@ -6,11 +6,14 @@ def volume_unit_sphere(n=2):
     from scipy.special import gamma
     return np.pi**(0.5 * n) / gamma(1.0 + 0.5 * n)
 
+
 def volume_sphere(n=2, r=1.0):
     return volume_unit_sphere(n=n) * r**n
 
+
 def volume_unit_box(n=2):
     return 2.0**n
+
 
 def volume_box(n=2, r=1.0):
     return volume_unit_box(n=n) * r**n

@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import ndimage
 from scipy import interpolate
+from skimage import transform
 import proplot as pplt
 
 from . import utils
@@ -15,7 +16,7 @@ class CameraSettings:
         self.zoom = 1.0
         if self.name_lowercase == 'cam06':
             self.shape = (512, 612)
-            self.pix2mm = 0.027  # zoom=1.0 (estimate!)
+            self.pix2mm = 0.0274  # zoom=1.0
         if self.name_lowercase == 'cam06_old':
             self.shape = (258, 346)
             self.pix2mm = 0.0659  # zoom=1.0
@@ -42,6 +43,10 @@ def thresh(image, thresh=None, val=0, mask=False):
         else:
             im[image < thresh] = val
     return im
+
+
+def downscale(image, down=1):
+    return skimage.downscale_local_mean(image, (down, down))
 
 
 def to_uint8(image, cmap):
