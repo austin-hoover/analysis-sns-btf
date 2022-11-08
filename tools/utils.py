@@ -119,69 +119,10 @@ def copy_into_new_dim(array, shape, axis=-1, method='broadcast', copy=False):
     return None
 
 
-def make_slice(n, axis=0, ind=0):
-    """Return a slice index."""
-    if type(axis) is int:
-        axis = [axis]
-    if type(ind) is int:
-        ind = [ind]
-    idx = n * [slice(None)]
-    for k, i in zip(axis, ind):
-        if i is None:
-            continue
-        elif type(i) is tuple and len(i) == 2:
-            idx[k] = slice(i[0], i[1])
-        else:
-            idx[k] = i
-    return tuple(idx)
-
-
-def project(array, axis=0):
-    """Project array onto one or more axes."""
-    if type(axis) is int:
-        axis = [axis]
-    axis_sum = tuple([i for i in range(array.ndim) if i not in axis])
-    proj = np.sum(array, axis=axis_sum)
-    # Handle out of order projection. Right now it just handles 2D, but
-    # it should be extended to higher dimensions.
-    if proj.ndim == 2 and axis[0] > axis[1]:
-        proj = np.moveaxis(proj, 0, 1)
-    return proj
-
-
 def get_grid_coords(*xi, indexing='ij'):
     """Return array of shape (N, D), where N is the number of points on 
     the grid and D is the number of dimensions."""
     return np.vstack([X.ravel() for X in np.meshgrid(*xi, indexing=indexing)]).T
-
-
-def snap(array, n=165, pad=0.1, tol=0.0):
-    """[Description here.]
-    
-    Parameters
-    ----------
-    array : ndarray, shape (n,)
-    n_bins : int
-        The number of bins.
-    n_bins_mult : int
-        Multiplicative factor on n_bins. I need to figure out why this is
-        necessary. Quote from K. Ruisard: "This parameter can be tuned
-        for good performance."
-        
-    Returns
-    -------
-    gv : ndarray, shape (?)
-        The grid values, i.e., bin centers.
-    idx : ndarray, shape (?)
-    """
-    bins = np.linspace(np.min(array) - pad, np.max(array) + pad, 1 + n)
-    counts, bins = np.histogram(array, bins=bins)    
-    idx = np.digitize(array, bins, right=False)
-    idx_unique = np.unique(idx)
-    for i in range(len(idx_unique)):
-        idx[idx == idx_unique[i]] = i
-    gv = bins[np.nonzero(counts)] + 0.5 * (bins[1] - bins[0])
-    return gv, idx
 
 
 # The following three functions are from Tony Yu's blog (https://tonysyu.github.io/ragged-arrays.html#.YKVwQy9h3OR). They allow fast saving/loading of ragged arrays.
