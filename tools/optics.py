@@ -168,15 +168,13 @@ class BTFOptics():
         Ml = matrix_drift(self.l)
         return Ml * Mrho * M2 * M1
     
-    def get_dE_screen(self, x3, current, x, xp):
+    def get_dE_screen(self, x3, x, xp):
         """Return energy deviation dE from the screen position.
         
         Parameters
         ----------
         x3 : float
-            Position on screen with respect to beam center [m].
-        current : float
-            Deviation from nominal dipole current (I - I0) [A].
+            Position on the screen with respect to the beam center [m].
         x : float
             The x [m] coordinate at the measurement plane.
         xp : float
