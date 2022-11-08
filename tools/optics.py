@@ -1,4 +1,8 @@
-"""BTF optics calculations."""
+"""BTF optics calculations.
+
+Note that all transfer matrices are np.matrix, not np.array, so the `*` 
+operator does matrix multiplication.
+"""
 import numpy as np
 from scipy.constants import speed_of_light
 
@@ -46,7 +50,7 @@ def get_xp(x1, x2, M):
     M : ndarray, shape (6, 6)
         The transfer matrix from point 1 to point 2.
     """
-    return (x2 - M[0,0] * x1) / M[0,1]
+    return (x2 - M[0, 0] * x1) / M[0, 1]
 
 
 def get_yp(y1, y2, M):
@@ -63,7 +67,7 @@ def get_yp(y1, y2, M):
 
 
 class BTFOptics():
-    """BTF optics calculations."""
+
     def __init__(
         self, 
         E0=2.5,
