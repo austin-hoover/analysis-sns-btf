@@ -121,8 +121,17 @@ class BTFOptics():
         self.E0 = E0
         self.m0 = m0
         self.freq = freq
+        self.C = C
+        self.amp2meter = amp2meter
         self.rho = rho
         self.theta = theta
+        self.GL05 = GL05
+        self.GL06 = GL06
+        self.l1 = l1
+        self.l2 = l2
+        self.l3 = l3
+        self.L2 = L2
+        self.l = l
         self.gamma = (self.E0 / self.m0) + 1.0  # Lorentz factor
         self.beta = np.sqrt(1.0 - (1.0 / (self.gamma**2)))  # Lorentz factor
         self.P0 = self.gamma * self.m0 * self.beta
