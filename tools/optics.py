@@ -1,8 +1,4 @@
-"""BTF optics calculations.
-
-Note that all transfer matrices are np.matrix, not np.array, so the `*` 
-operator does matrix multiplication.
-"""
+"""BTF optics calculations."""
 import numpy as np
 from scipy.constants import speed_of_light
 
@@ -13,7 +9,7 @@ def matrix_dipole(rho, theta):
         [-1 / rho, 0, 0, 0, 0, 1],
         [0, 0, 1, rho * theta, 0, 0],
         [0, 0, 0, 1, 0, 0],
-        [1, rho, 0, 0, 1, rho * (theta - 1)],
+        [1, rho, 0, 0, 1, rho * (theta - 1.0)],
         [0, 0, 0, 0, 0, 1]
     ])
 
@@ -67,7 +63,7 @@ def get_yp(y1, y2, M):
 
 
 class BTFOptics():
-
+    """BTF optics calculations."""
     def __init__(
         self, 
         E0=2.5,
@@ -92,7 +88,7 @@ class BTFOptics():
         E0 : float
             Kinetic energy of synchronous particle [MeV].
         m0 : float
-            Mass per particle [MeV/c^2].
+            Mass per particle [MeV / c^2].
         freq : float
             RF frequency [Hz].
         C : float
@@ -132,7 +128,7 @@ class BTFOptics():
         self.l3 = l3
         self.L2 = L2
         self.l = l
-        self.gamma = (self.E0 / self.m0) + 1.0  # Lorentz factor
+        self.gamma = 1.0 + (self.E0 / self.m0)  # Lorentz factor
         self.beta = np.sqrt(1.0 - (1.0 / (self.gamma**2)))  # Lorentz factor
         self.P0 = self.gamma * self.m0 * self.beta
         self.brho = self.gamma * self.beta * self.m0 * 1.0e6 / speed_of_light
@@ -156,7 +152,7 @@ class BTFOptics():
     def get_M2(self):
         """Return transfer matrix from second slit to screen."""
         M2 = matrix_drift(self.L2)
-        Mrho = matrix_dipole(self.rho, self.thetha)
+        Mrho = matrix_dipole(self.rho, self.theta)
         Ml = matrix_drift(self.l)
         return Ml * Mrho * M2
     
@@ -191,30 +187,3 @@ class BTFOptics():
         b = np.sqrt(1.0 / (1.0 + (self.m0**2) / (P**2)))
         gamma = P / (self.m0 * b)
         return (gamma - self.gamma) * self.m0
-    
-    def get_dphi(self, de, L=None, l=0.695):
-        """Phase conversion.
-        
-        Parameters
-        ----------
-        de : float
-            [...]
-        L : float
-            Distance from emittance plane to dipole entrance (L=1.545 for HZ04 location).
-        l : float
-            Distance from dipole exit to BSM.
-            
-        Returns
-        -------
-        dphi : float
-            Phase shift due to path length effect when projecting back to earlier 
-            plane. (0 when considering BSM plane.)
-        """
-        if L is None:
-            L = self.L2        
-        prefactor = 2.0 * np.pi * self.freq / (self.beta * self.gamma * self.gamma * speed_of_light) 
-        path_length = L + l + self.rho * 0.5 * np.pi
-        x_correction = x0 + xp0 * (L + self.rho)
-        DEE = de / self.E0
-        DPP = 1.0 / self.beta**2 * (1.0 - 1.0 / self.gamma) * DEE 
-        return np.rad2deg(prefactor * DPP * (path_length + x_correction + self.rho*(0.5 * np.pi - 1.0) * DPP))
