@@ -28,6 +28,9 @@ class CameraSettings:
     def set_zoom(self, zoom):
         self.zoom = zoom
         self.pix2mm /= zoom
+        
+    def set_downscale(downscale):
+        self.pix2mm = self.pix2mm * downscale
     
 
 def crop(image, y1=None, y2=None, x1=None, x2=None):
